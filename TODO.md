@@ -1,0 +1,36 @@
+# TODO - Screens
+
+- [ ] Welcome / Onboarding
+- [ ] Sign Up
+- [ ] Sign In
+- [ ] Course Selection
+- [ ] Placement Test
+- [ ] Daily Goal Setup
+- [ ] Home / Learning Path
+- [ ] Unit Guidebook
+- [ ] Lesson Introduction
+- [ ] Multiple Choice Exercise
+- [ ] Word Arrangement Exercise
+- [ ] Fill-in-the-Blank Exercise
+- [ ] Typing Exercise
+- [ ] Matching Exercise
+- [ ] Listening Exercise
+- [ ] Speaking Exercise
+- [ ] Reading Exercise
+- [ ] Conversation Exercise
+- [ ] Answer Feedback
+- [ ] Lesson Completion
+- [ ] Mistakes Review
+- [ ] Practice Hub
+- [ ] Quests
+- [ ] Leaderboard
+- [ ] Activity Feed
+- [ ] Profile
+- [ ] Achievements
+- [ ] Streak
+- [ ] Shop
+- [ ] Hearts / Energy
+- [ ] Friends
+- [ ] Subscription
+- [ ] Notifications
+- [ ] Settings
