@@ -1,6 +1,20 @@
 # TODO - Screens
 
-- [ ] Welcome / Onboarding
+- [ ] SplashScreen
+  - Loading screen
+- [ ] WelcomeScreen
+  - Logo
+  - “Get Started”
+  - “I already have an account”
+- [ ] OnboardingScreen
+  - [ ] Language choice step
+  - [ ] Skill level step
+  - [ ] Goals step
+  - [ ] Daily commitment step
+  - [ ] Notifications step
+  - [ ] Widgets step
+  - [ ] Plan selection step
+  - [ ] Starting level step
 - [ ] Sign Up
 - [ ] Sign In
 - [ ] Course Selection
