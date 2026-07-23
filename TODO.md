@@ -1,11 +1,11 @@
 # TODO - Screens
 
-- [ ] SplashScreen
+- [x] SplashScreen
   - Loading screen
-- [ ] WelcomeScreen
-  - Logo
-  - “Get Started”
-  - “I already have an account”
+- [x] WelcomeScreen
+  - [x] Logo
+  - [x] “Get Started”
+  - [x] “I already have an account”
 - [ ] OnboardingScreen
   - [ ] Language choice step
   - [ ] Skill level step
