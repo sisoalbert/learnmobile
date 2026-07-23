@@ -65,11 +65,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   getStartedButton: {
-    backgroundColor: '#58CC02', // Duolingo style bright green
+    backgroundColor: '#2289FD',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#46A302',
+    shadowColor: '#1A6ECE',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0,
