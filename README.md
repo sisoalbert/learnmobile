@@ -1,56 +1,195 @@
 # Welcome to your Expo app 👋
+![App Screenshot](assets/photos/app.png)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+# 1. Switch to version/1.0.6 and fast-forward merge main
+git checkout version/1.0.6
+git merge main --ff-only
 
-## Get started
+# 2. Publish the OTA update
+eas update --channel production --message "p2p message delete and copy"
 
-1. Install dependencies
+# 3. update at [RELEASES.md](RELEASES.md) and merge it back to main
 
-   ```bash
-   npm install
-   ```
+# 4 vercel prod
+vercel --prod
 
-2. Start the app
+# Expo CLI Commands
 
-   ```bash
-   npx expo start
-   ```
+````
+git config --local --unset extensions.worktreeconfig
+npx wrangler secret put <KEY>
+npx instant-cli push schema --yes
+npx instant-cli push perms --yes
+npm install expo --fix
+npx expo install --check
+npx expo-doctor   
+npm run web
+npx expo run:ios
+npx expo run:android
 
-In the output, you'll find options to open the app in a
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+npx expo run:android --device
+npx expo run:ios --device
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+npx expo run:ios
+npx expo run:ios --device
+npx expo run:android
+npx expo run:android --device
+npx expo prebuild --clean
+eas build --platform android --local
+eas build --platform ios --local
+npx eas build --platform android --profile development --local
+npx eas build --platform android --profile preview --local
+npx eas build --platform ios --profile development --local
+npx eas build --platform ios --profile preview --local
+npx expo-router-sitemap (https://youtu.be/Yh6Qlg2CYwQ?si=wKH0CGw9-mTqRvcN)
 
-## Get a fresh project
+```
 
-When you're ready, run:
+```bash
+npx expo start
+````
 
 ```bash
 npm run reset-project
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+```bash
+npx expo prebuild --clean
+```
 
-### Other setup steps
+```bash
+npx expo prebuild --platform android
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npx expo prebuild --platform ios
+```
 
-## Learn more
+```bash
+npx expo run:ios
+```
+```bash
+npx expo run:ios --device
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npx expo run:android
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+eas build -p android --profile preview --local
+```
 
-## Join the community
+```bash
+eas build -p android --profile preview
+```
 
-Join our community of developers creating universal apps.
+```bash
+eas build -p android --profile preview --local
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+eas build -p android --profile production
+```
+
+```bash
+eas build -p ios
+```
+
+```bash
+eas build -p ios --profile preview
+```
+
+```bash
+eas build -p ios --profile production
+```
+
+```bash
+eas build -p web
+```
+
+```bash
+eas build -p web --profile preview
+```
+
+```bash
+eas build -p web --profile production
+```
+
+```bash
+npx expo start --android
+```
+
+```bash
+npx expo start --ios
+```
+
+```bash
+npx expo start --web
+```
+
+```bash
+npx expo start --clear-cache
+```
+
+```bash
+eas build --platform android
+```
+
+```bash
+eas build --platform ios
+```
+
+```bash
+eas build --platform web
+```
+
+```bash
+eas build --platform web --profile preview
+```
+
+```bash
+eas build --platform web --profile production
+```
+
+```bash
+eas submit --platform ios
+```
+
+```bash
+eas submit --platform android
+```
+
+## OTA Updates (EAS Update)
+
+Push over-the-air JavaScript/asset updates without a new store build.
+
+### Publish an update
+
+```bash
+npx eas-cli update --channel production --message "Description of changes" --non-interactive
+```
+
+### Build number
+
+Each OTA update has a `buildNumber` in `app.config.js` (`extra.buildNumber`). Bump it before publishing so users can see which update they're on in the **App Updates** screen (`Settings > App Updates`), displayed as `1.0.0 (2)`.
+
+The `buildNumber` is independent of `version` — changing `version` changes the `runtimeVersion` (due to `appVersion` policy), which means the update won't reach existing users. Only bump `version` when shipping a new native build.
+
+### Channels
+
+| Channel       | Profile          | Use case                  |
+|---------------|------------------|---------------------------|
+| `production`  | `production`     | Live app store users      |
+| `preview`     | `preview`        | Internal testing (TestFlight / internal track) |
+| `development` | `development`    | Dev client builds         |
+
+cd moneytracker-app && eas update --channel production --message "Add real-time moreBanner subscription"
+
+### Workflow
+
+1. Make your JS/asset changes
+2. Bump `extra.buildNumber` in `app.config.js`
+3. Run `npx eas-cli update --channel production --message "your message" --non-interactive`
+4. Users pick up the update automatically or via the App Updates screen

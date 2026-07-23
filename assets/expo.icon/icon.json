@@ -6,19 +6,28 @@
     {
       "layers" : [
         {
+          "hidden" : false,
           "image-name" : "expo-symbol 2.svg",
           "name" : "expo-symbol 2",
           "position" : {
-            "scale" : 1,
+            "scale" : 1.7,
             "translation-in-points" : [
-              1.1008400065293245e-05,
-              -16.046875
+              -9.665149200548626,
+              81.82144397244406
             ]
           }
         },
         {
+          "hidden" : false,
           "image-name" : "grid.png",
-          "name" : "grid"
+          "name" : "grid",
+          "position" : {
+            "scale" : 1.2,
+            "translation-in-points" : [
+              -10.359375,
+              -43.5703125
+            ]
+          }
         }
       ],
       "shadow" : {
