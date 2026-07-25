@@ -58,6 +58,23 @@ npx expo install   expo-router   react-native-safe-area-context   react-native-s
 
 ---
 
+## Web Deployment
+
+- [x] `wrangler`
+  - Builds, validates, and deploys the exported Expo web application to Cloudflare Workers Static Assets.
+
+### Commands
+
+```bash
+npm run build:web
+npx wrangler deploy --dry-run
+npm run deploy:web
+```
+
+See `deployment.md` for the production URL and full deployment configuration.
+
+---
+
 ## 3. Backend and Realtime Data
 
 - [x] `convex`

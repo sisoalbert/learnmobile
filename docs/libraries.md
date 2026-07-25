@@ -57,7 +57,7 @@
 
 ## Persistent Local State & State Management
 - [x] `zustand`
-- [ ] `@react-native-async-storage/async-storage`
+- [x] `@react-native-async-storage/async-storage`
 - [ ] `expo-secure-store`
 - [ ] `expo-sqlite`
 
@@ -93,3 +93,6 @@
 - [ ] `prettier`
 - [ ] `husky`
 - [ ] `lint-staged`
+
+## Web Deployment
+- [x] `wrangler`
