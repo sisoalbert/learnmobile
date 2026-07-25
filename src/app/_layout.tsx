@@ -22,6 +22,7 @@ export default function RootLayout() {
       <Stack.Screen name="welcome" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="home" />
+      <Stack.Screen name="profile" />
 
       <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="signin" />

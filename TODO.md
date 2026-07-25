@@ -41,6 +41,8 @@
 - [ ] Leaderboard
 - [ ] Activity Feed
 - [ ] Profile
+ - [x] settings page
+
 - [ ] Achievements
 - [ ] Streak
 - [ ] Shop
@@ -49,3 +51,5 @@
 - [ ] Subscription
 - [ ] Notifications
 - [ ] Settings
+ - [x] user onboarding options (temporary)
+ 
