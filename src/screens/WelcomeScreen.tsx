@@ -5,14 +5,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 import { useSessionStore } from '@/state/sessionStore';
+import { useOnboardingStore } from '@/state/onboarding-store';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const continueAsGuest = useSessionStore((state) => state.continueAsGuest);
+  const hasHydrated = useOnboardingStore((state) => state.hasHydrated);
+  const isOnboardingCompleted = useOnboardingStore((state) => state.isCompleted);
 
   const handleGetStarted = () => {
+    if (!hasHydrated) return;
+
     continueAsGuest();
-    router.push('/onboarding');
+    if (isOnboardingCompleted) {
+      router.replace('/home');
+    } else {
+      router.push('/onboarding');
+    }
   };
 
   return (
@@ -28,7 +37,9 @@ export default function WelcomeScreen() {
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.getStartedButton}
+            accessibilityState={{ disabled: !hasHydrated }}
+            disabled={!hasHydrated}
+            style={[styles.getStartedButton, !hasHydrated && styles.getStartedButtonDisabled]}
             onPress={handleGetStarted}
             activeOpacity={0.8}
           >
@@ -92,6 +103,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
+  },
+  getStartedButtonDisabled: {
+    opacity: 0.5,
   },
   signInButton: {
     backgroundColor: '#FFFFFF',
