@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { BackHandler, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -48,6 +48,7 @@ const hasRequiredAnswer = (
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const isLaunchingLesson = useRef(false);
   const state = useOnboardingStore();
   const continueAsGuest = useSessionStore((session) => session.continueAsGuest);
   const step = useMemo(
@@ -66,9 +67,10 @@ export default function OnboardingScreen() {
 
   const handleContinue = useCallback(() => {
     if (step.id === 'lesson-transition') {
+      isLaunchingLesson.current = true;
       continueAsGuest();
       state.completeOnboarding();
-      router.replace('/home');
+      router.replace('/lessons/first' as never);
       return;
     }
     state.nextStep();
@@ -76,7 +78,7 @@ export default function OnboardingScreen() {
 
   useEffect(() => {
     if (!state.hasHydrated) return;
-    if (state.isCompleted) router.replace('/home');
+    if (state.isCompleted && !isLaunchingLesson.current) router.replace('/home');
   }, [router, state.hasHydrated, state.isCompleted]);
 
   useEffect(() => {

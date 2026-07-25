@@ -121,7 +121,7 @@ function AvailablePathCard({ path }: { path: AvailableLearningPath }) {
         ))}
       </View>
 
-      <Link href={'/question-types/multiple_choice' as never} asChild>
+      <Link href={'/lessons/first' as never} asChild>
         <Pressable accessibilityRole="link" style={({ pressed }) => [styles.continueButton, { backgroundColor: path.accent }, pressed && styles.pressed]}>
           <Text selectable style={styles.continueText}>CONTINUE LEARNING</Text>
           <Lucide name="arrow-right" size={19} color="#FFFFFF" />

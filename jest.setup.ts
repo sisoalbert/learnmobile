@@ -5,10 +5,19 @@ jest.mock('@react-native-vector-icons/lucide', () => ({
 }));
 
 jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual('react-native');
+  const { ScrollView, Text, View } = jest.requireActual('react-native');
+  const animation = {
+    delay() { return this; },
+    duration() { return this; },
+    springify() { return this; },
+  };
+
   return {
     __esModule: true,
-    default: { View, createAnimatedComponent: (component: unknown) => component },
+    default: { ScrollView, Text, View, createAnimatedComponent: (component: unknown) => component },
+    BounceIn: animation,
+    FadeInUp: animation,
+    ZoomIn: animation,
     useAnimatedStyle: (factory: () => unknown) => factory(),
     useEvent: () => jest.fn(),
     useSharedValue: (value: unknown) => ({ value }),
