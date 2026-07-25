@@ -42,7 +42,7 @@
 - [ ] `expo-haptics`
 - [x] `react-native-reanimated`
 - [x] `react-native-gesture-handler`
-- [ ] `lottie-react-native` (`expo-lottie`)
+- [x] `lottie-react-native` (`expo-lottie`)
 
 ## Notifications & Device
 - [ ] `expo-notifications`
