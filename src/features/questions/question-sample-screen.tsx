@@ -3,6 +3,7 @@ import React from 'react';
 
 import { QUESTION_TYPES } from './question-constants';
 import { QUESTION_FIXTURES_BY_TYPE, isQuestionType } from './question-fixtures';
+import { goBackOrReplace } from './question-navigation';
 import { QuestionTypeScreen } from './question-type-screen';
 
 export default function QuestionSampleScreen({ type }: { type: string }) {
@@ -16,7 +17,7 @@ export default function QuestionSampleScreen({ type }: { type: string }) {
       key={type}
       question={question}
       sequence={{ index: index + 1, total: QUESTION_TYPES.length }}
-      onBack={() => router.back()}
+      onBack={() => goBackOrReplace('/question-types')}
       onContinue={() => {
         const next = QUESTION_TYPES[index + 1];
         if (next) router.replace({ pathname: '/question-types/[type]', params: { type: next } } as never);

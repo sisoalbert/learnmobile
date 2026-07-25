@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { QUESTION_COLORS, QUESTION_TYPE_META, QUESTION_TYPES } from './question-constants';
 import { QUESTION_FIXTURES_BY_TYPE } from './question-fixtures';
+import { goBackOrReplace } from './question-navigation';
 
 export default function QuestionGalleryScreen() {
   const { width } = useWindowDimensions();
@@ -14,7 +15,7 @@ export default function QuestionGalleryScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}><Lucide name="arrow-left" size={23} color={QUESTION_COLORS.muted} /></Pressable>
+          <Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={() => goBackOrReplace('/home')} style={styles.backButton}><Lucide name="arrow-left" size={23} color={QUESTION_COLORS.muted} /></Pressable>
           <View style={styles.headerCopy}>
             <Text selectable style={styles.title}>14 Question Types ✨</Text>
             <Text selectable style={styles.subtitle}>Practice. Build. Ship. Become an Expo expert.</Text>
