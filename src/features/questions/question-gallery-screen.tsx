@@ -4,9 +4,10 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { goBackOrReplace } from '@/navigation/go-back-or-replace';
+
 import { QUESTION_COLORS, QUESTION_TYPE_META, QUESTION_TYPES } from './question-constants';
 import { QUESTION_FIXTURES_BY_TYPE } from './question-fixtures';
-import { goBackOrReplace } from './question-navigation';
 
 export default function QuestionGalleryScreen() {
   const { width } = useWindowDimensions();

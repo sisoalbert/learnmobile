@@ -1,4 +1,4 @@
-import { goBackOrReplace } from '../question-navigation';
+import { goBackOrReplace } from '@/navigation/go-back-or-replace';
 
 const mockRouter = {
   back: jest.fn(),

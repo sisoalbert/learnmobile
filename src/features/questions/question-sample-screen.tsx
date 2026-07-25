@@ -1,9 +1,10 @@
 import { Redirect, router } from 'expo-router';
 import React from 'react';
 
+import { goBackOrReplace } from '@/navigation/go-back-or-replace';
+
 import { QUESTION_TYPES } from './question-constants';
 import { QUESTION_FIXTURES_BY_TYPE, isQuestionType } from './question-fixtures';
-import { goBackOrReplace } from './question-navigation';
 import { QuestionTypeScreen } from './question-type-screen';
 
 export default function QuestionSampleScreen({ type }: { type: string }) {
