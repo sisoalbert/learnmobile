@@ -21,6 +21,13 @@ export default function OnboardingScreen() {
           contentFit="contain"
         />
         <Text style={styles.welcomeText}>Welcome</Text>
+        <TouchableOpacity
+          style={styles.homeButton}
+          onPress={() => router.push('/home')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.homeButtonText}>Go to Home</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -60,5 +67,26 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#4B4B4B',
     textAlign: 'center',
+    marginBottom: 24,
+  },
+  homeButton: {
+    backgroundColor: '#2289FD',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#1A6ECE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  homeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
 });

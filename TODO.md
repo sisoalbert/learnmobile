@@ -7,6 +7,7 @@
   - [x] “Get Started”
   - [x] “I already have an account”
 - [ ] OnboardingScreen
+  - [x] Logo
   - [ ] Language choice step
   - [ ] Skill level step
   - [ ] Goals step
@@ -20,7 +21,7 @@
 - [ ] Course Selection
 - [ ] Placement Test
 - [ ] Daily Goal Setup
-- [ ] Home / Learning Path
+- [x] Home / Learning Path
 - [ ] Unit Guidebook
 - [ ] Lesson Introduction
 - [ ] Multiple Choice Exercise
