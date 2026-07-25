@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
+import WelcomeAnimation from '@/common/WelcomeAnimation';
 
 export default function ProfileScreen({
   name,
@@ -18,6 +19,7 @@ export default function ProfileScreen({
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
       >
+        <WelcomeAnimation />
         <Text selectable style={styles.title}>
           {name}
         </Text>

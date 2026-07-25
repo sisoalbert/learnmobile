@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import WelcomeAnimation from '@/common/WelcomeAnimation';
 import { useSessionStore } from '@/state/sessionStore';
 import { useOnboardingStore } from '@/state/onboarding-store';
 
@@ -33,7 +32,6 @@ export default function WelcomeScreen() {
             style={styles.logo}
             contentFit="contain"
           />
-          <WelcomeAnimation/>
         </View>
 
         <View style={styles.buttonContainer}>
