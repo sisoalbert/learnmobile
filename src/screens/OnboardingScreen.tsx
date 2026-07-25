@@ -4,16 +4,21 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
+import { Header } from '@/common';
+import { useSessionStore } from '@/state/sessionStore';
+
 export default function OnboardingScreen() {
   const router = useRouter();
+  const continueAsGuest = useSessionStore((state) => state.continueAsGuest);
+
+  const handleContinue = () => {
+    continueAsGuest();
+    router.replace('/home');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-      </View>
+      <Header />
       <View style={styles.content}>
         <Image
           source={require('@/assets/logo.png')}
@@ -23,10 +28,10 @@ export default function OnboardingScreen() {
         <Text style={styles.welcomeText}>Welcome</Text>
         <TouchableOpacity
           style={styles.homeButton}
-          onPress={() => router.push('/home')}
+          onPress={handleContinue}
           activeOpacity={0.8}
         >
-          <Text style={styles.homeButtonText}>Go to Home</Text>
+          <Text style={styles.homeButtonText}>Continue as guest</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -38,20 +43,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  backButton: {
-    padding: 8,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#AFAFAF',
-    fontWeight: '600',
-  },
   content: {
     flex: 1,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,

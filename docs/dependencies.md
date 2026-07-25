@@ -248,7 +248,10 @@ npx expo install expo-calendar expo-sharing
 
 ---
 
-## 11. Persistent Local State
+## 11. Persistent Local State & State Management
+
+- [x] `zustand`
+  - Client state management store for user session and application state.
 
 - [x] `@react-native-async-storage/async-storage`
   - Non-sensitive preferences such as onboarding completion, sound settings, daily-goal selection, and cached UI state.
@@ -298,6 +301,9 @@ npm install react-hook-form zod @hookform/resolvers
 
 - [x] `react-native-svg`
   - Progress rings, path visuals, custom icons, badges, matching lines, and charts.
+
+- [x] `@react-native-vector-icons/lucide`
+  - Lucide vector icon set for user interface elements.
 
 - [x] `@expo/vector-icons`
   - General-purpose interface icons. Included in standard Expo templates, but verify it is available.

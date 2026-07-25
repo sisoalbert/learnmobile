@@ -4,8 +4,16 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
+import { useSessionStore } from '@/state/sessionStore';
+
 export default function WelcomeScreen() {
   const router = useRouter();
+  const continueAsGuest = useSessionStore((state) => state.continueAsGuest);
+
+  const handleGetStarted = () => {
+    continueAsGuest();
+    router.push('/onboarding');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -21,7 +29,7 @@ export default function WelcomeScreen() {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.getStartedButton}
-            onPress={() => router.push('/onboarding')}
+            onPress={handleGetStarted}
             activeOpacity={0.8}
           >
             <Text style={styles.getStartedText}>Get Started</Text>
@@ -47,6 +55,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
     paddingHorizontal: 24,
     justifyContent: 'space-between',
     paddingVertical: 32,

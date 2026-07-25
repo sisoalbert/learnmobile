@@ -55,7 +55,8 @@
 - [ ] `expo-sensors`
 - [ ] `expo-ads-admob`
 
-## Persistent Local State
+## Persistent Local State & State Management
+- [x] `zustand`
 - [ ] `@react-native-async-storage/async-storage`
 - [ ] `expo-secure-store`
 - [ ] `expo-sqlite`
@@ -67,7 +68,7 @@
 
 ## UI Utilities
 - [ ] `react-native-svg`
-- [ ] `@expo/vector-icons`
+- [x] `@react-native-vector-icons/lucide`
 
 ## Data and Date Utilities
 - [ ] `date-fns`
