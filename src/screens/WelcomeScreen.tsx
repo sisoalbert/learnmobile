@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSessionStore } from '@/state/sessionStore';
@@ -35,23 +35,23 @@ export default function WelcomeScreen() {
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
+          <Pressable
+            accessibilityRole="button"
             accessibilityState={{ disabled: !hasHydrated }}
             disabled={!hasHydrated}
             style={[styles.getStartedButton, !hasHydrated && styles.getStartedButtonDisabled]}
             onPress={handleGetStarted}
-            activeOpacity={0.8}
           >
             <Text style={styles.getStartedText}>Get Started</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
+            accessibilityRole="button"
             style={styles.signInButton}
             onPress={() => router.push('/signin')}
-            activeOpacity={0.7}
           >
             <Text style={styles.signInText}>I already have an account</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </SafeAreaView>

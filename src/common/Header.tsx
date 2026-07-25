@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { Pressable, View, StyleSheet, ViewStyle } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Lucide } from '@react-native-vector-icons/lucide';
 
@@ -33,27 +33,25 @@ export default function Header({
   return (
     <View style={[styles.header, style]}>
       {showBack && (
-        <TouchableOpacity
+        <Pressable
           accessibilityLabel="Go back"
           accessibilityRole="button"
           style={styles.headerButton}
           onPress={handleBack}
-          activeOpacity={0.7}
         >
           <Lucide name="arrow-left" size={24} color="#AFAFAF" />
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {showSettings && (
         <Link href="/profile/settings" asChild>
-          <TouchableOpacity
+          <Pressable
             accessibilityLabel="Open profile settings"
             accessibilityRole="button"
             style={styles.headerButton}
-            activeOpacity={0.7}
           >
             <Lucide name="settings" size={24} color="#AFAFAF" />
-          </TouchableOpacity>
+          </Pressable>
         </Link>
       )}
     </View>

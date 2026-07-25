@@ -1,0 +1,207 @@
+import { Lucide } from '@react-native-vector-icons/lucide';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { QUESTION_COLORS, QUESTION_TYPE_META } from './question-constants';
+import { QuestionInteraction } from './question-components';
+import { answerMatchesQuestion, gradeQuestion, isAnswerComplete } from './question-engine';
+import { RuleList } from './question-ui';
+import type {
+  CustomValidatorRegistry,
+  LocalQuestionResult,
+  Question,
+  QuestionAnswer,
+} from './questions.types';
+
+export type QuestionTypeScreenProps = {
+  question: Question;
+  initialAnswer?: QuestionAnswer;
+  sequence?: { index: number; total: number };
+  onAnswerChange?: (answer: QuestionAnswer) => void;
+  onResult?: (result: LocalQuestionResult) => void;
+  onContinue?: (result: LocalQuestionResult) => void;
+  onBack?: () => void;
+  customValidators?: CustomValidatorRegistry;
+};
+
+export function QuestionTypeScreen({
+  question,
+  ...props
+}: QuestionTypeScreenProps) {
+  return <QuestionTypeScreenContent key={question.id} question={question} {...props} />;
+}
+
+function QuestionTypeScreenContent({
+  question,
+  initialAnswer,
+  sequence,
+  onAnswerChange,
+  onResult,
+  onContinue,
+  onBack,
+  customValidators = {},
+}: QuestionTypeScreenProps) {
+  const [answer, setAnswer] = useState<QuestionAnswer | undefined>(initialAnswer);
+  const [result, setResult] = useState<LocalQuestionResult>();
+  const [visibleHintIds, setVisibleHintIds] = useState<string[]>([]);
+  const [attempts, setAttempts] = useState(0);
+  const meta = QUESTION_TYPE_META[question.type];
+  const invalidInitialAnswer = !answerMatchesQuestion(question, initialAnswer);
+
+  const changeAnswer = (next: QuestionAnswer) => {
+    setAnswer(next);
+    onAnswerChange?.(next);
+  };
+  const check = () => {
+    if (!answer || !isAnswerComplete(question, answer)) return;
+    const nextResult = gradeQuestion(question, answer, customValidators);
+    setResult(nextResult);
+    setAttempts((value) => value + 1);
+    onResult?.(nextResult);
+  };
+  const retry = () => {
+    setAnswer(undefined);
+    setResult(undefined);
+  };
+  const showHint = () => {
+    const nextHint = question.hints?.find((hint) => !visibleHintIds.includes(hint.id));
+    if (nextHint) setVisibleHintIds((ids) => [...ids, nextHint.id]);
+  };
+
+  if (invalidInitialAnswer) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorPage}>
+          <Lucide name="triangle-alert" size={34} color={QUESTION_COLORS.red} />
+          <Text selectable style={styles.errorTitle}>This answer cannot be opened</Text>
+          <Text selectable style={styles.errorBody}>Answer type “{initialAnswer?.type}” does not match “{question.type}”.</Text>
+          {onBack ? <PrimaryButton label="Go back" onPress={onBack} /> : null}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const complete = isAnswerComplete(question, answer);
+  const feedbackColor = result?.status === 'correct' ? QUESTION_COLORS.green : result?.status === 'partially_correct' ? QUESTION_COLORS.amber : QUESTION_COLORS.red;
+  const feedbackBackground = result?.status === 'correct' ? QUESTION_COLORS.greenSoft : result?.status === 'partially_correct' ? '#FFF7E6' : QUESTION_COLORS.redSoft;
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <View style={styles.page}>
+        <View style={styles.header}>
+          <Pressable accessibilityLabel="Back to question types" accessibilityRole="button" hitSlop={8} onPress={onBack} style={styles.headerButton}>
+            <Lucide name="x" size={24} color={QUESTION_COLORS.muted} />
+          </Pressable>
+          <View accessibilityLabel={sequence ? `${sequence.index} of ${sequence.total}` : undefined} accessibilityRole="progressbar" style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${sequence ? Math.max(5, sequence.index / sequence.total * 100) : 100}%`, backgroundColor: meta.color }]} />
+          </View>
+          <View style={styles.xpPill}><Lucide name="zap" size={15} color="#F59E0B" /><Text selectable style={styles.xpText}>{question.xp} XP</Text></View>
+        </View>
+
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.typePill, { backgroundColor: meta.softColor }]}>
+            <View style={[styles.typeNumber, { backgroundColor: meta.color }]}><Text selectable style={styles.typeNumberText}>{(sequence?.index ?? 1).toString()}</Text></View>
+            <Text selectable style={[styles.typeLabel, { color: meta.color }]}>{meta.label}</Text>
+          </View>
+          <View style={styles.promptGroup}>
+            <Text selectable style={styles.title}>{question.title}</Text>
+            <Text selectable style={styles.prompt}>{question.prompt}</Text>
+            {question.instruction ? <Text selectable style={styles.instruction}>{question.instruction}</Text> : null}
+          </View>
+
+          <QuestionInteraction question={question} answer={answer} disabled={Boolean(result)} onAnswerChange={changeAnswer} customValidators={customValidators} />
+
+          {question.hints?.length ? (
+            <View style={styles.hints}>
+              {visibleHintIds.map((id) => {
+                const hint = question.hints?.find((candidate) => candidate.id === id);
+                return hint ? <View key={id} style={styles.hintCard}><Lucide name="lightbulb" size={18} color="#C67B05" /><Text selectable style={styles.hintText}>{hint.text}{hint.penalty ? ` (−${hint.penalty} XP)` : ''}</Text></View> : null;
+              })}
+              {visibleHintIds.length < question.hints.length && !result ? <Pressable accessibilityRole="button" onPress={showHint} style={styles.hintButton}><Lucide name="lightbulb" size={17} color={QUESTION_COLORS.muted} /><Text selectable style={styles.hintButtonText}>Show a hint</Text></Pressable> : null}
+            </View>
+          ) : null}
+
+          {result ? (
+            <View accessibilityLiveRegion="polite" style={[styles.feedback, { backgroundColor: feedbackBackground, borderColor: feedbackColor }]}>
+              <View style={styles.feedbackHeading}>
+                <Lucide name={result.status === 'correct' ? 'circle-check' : result.status === 'partially_correct' ? 'circle-dot' : result.status === 'error' ? 'triangle-alert' : 'circle-x'} size={25} color={feedbackColor} />
+                <View style={styles.feedbackCopy}>
+                  <Text selectable style={[styles.feedbackTitle, { color: feedbackColor }]}>{result.status === 'correct' ? 'Excellent!' : result.status === 'partially_correct' ? 'Almost there' : result.status === 'error' ? 'Preview needs attention' : 'Not quite yet'}</Text>
+                  <Text selectable style={styles.feedbackScore}>{result.score}/{result.maximumScore} points · Attempt {attempts}</Text>
+                </View>
+              </View>
+              {result.validationErrors.map((error) => <Text selectable key={error} style={styles.validationError}>{error}</Text>)}
+              {result.ruleOutcomes.length > 1 ? <RuleList outcomes={result.ruleOutcomes} /> : null}
+              {question.explanation ? <View style={styles.explanation}><Text selectable style={styles.explanationTitle}>Why?</Text><Text selectable style={styles.explanationText}>{question.explanation.summary}</Text>{question.explanation.details ? <Text selectable style={styles.explanationText}>{question.explanation.details}</Text> : null}</View> : null}
+            </View>
+          ) : null}
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+
+        <View style={styles.footer}>
+          {result ? (
+            result.status === 'correct'
+              ? <PrimaryButton label="Continue" onPress={() => onContinue?.(result)} />
+              : <PrimaryButton label="Try again" onPress={retry} color={feedbackColor} />
+          ) : <PrimaryButton label="Check answer" disabled={!complete} onPress={check} />}
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function PrimaryButton({ label, disabled, color = QUESTION_COLORS.blue, onPress }: { label: string; disabled?: boolean; color?: string; onPress?: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryButton, { backgroundColor: disabled ? '#D8DCE3' : color, boxShadow: disabled ? '0 4px 0 #BEC3CC' : `0 4px 0 ${color === QUESTION_COLORS.blue ? QUESTION_COLORS.blueDark : color}` }, pressed && !disabled && styles.buttonPressed]}>
+      <Text selectable style={styles.primaryButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: QUESTION_COLORS.background },
+  page: { flex: 1, width: '100%', maxWidth: 700, alignSelf: 'center', backgroundColor: QUESTION_COLORS.background },
+  header: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16 },
+  headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
+  progressTrack: { flex: 1, height: 9, overflow: 'hidden', borderRadius: 999, backgroundColor: '#E2E5EA' },
+  progressFill: { height: '100%', borderRadius: 999 },
+  xpPill: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 999, backgroundColor: '#FFF7E4' },
+  xpText: { color: '#A66200', fontSize: 12, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  content: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 24, gap: 20 },
+  typePill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, padding: 6, paddingRight: 12, borderRadius: 999 },
+  typeNumber: { width: 25, height: 25, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  typeNumberText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  typeLabel: { fontSize: 13, fontWeight: '800' },
+  promptGroup: { gap: 8 },
+  title: { color: QUESTION_COLORS.ink, fontSize: 25, fontWeight: '800', lineHeight: 31 },
+  prompt: { color: QUESTION_COLORS.ink, fontSize: 18, fontWeight: '600', lineHeight: 27 },
+  instruction: { color: QUESTION_COLORS.muted, fontSize: 14, lineHeight: 21 },
+  hints: { gap: 8 },
+  hintCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, padding: 12, borderRadius: 13, backgroundColor: '#FFF7E4' },
+  hintText: { flex: 1, color: '#7C510A', fontSize: 13, lineHeight: 19 },
+  hintButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 11, backgroundColor: '#ECEFF3' },
+  hintButtonText: { color: QUESTION_COLORS.muted, fontSize: 13, fontWeight: '700' },
+  feedback: { gap: 13, padding: 16, borderWidth: 1.5, borderRadius: 18, borderCurve: 'continuous' },
+  feedbackHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  feedbackCopy: { flex: 1, gap: 2 },
+  feedbackTitle: { fontSize: 19, fontWeight: '800' },
+  feedbackScore: { color: QUESTION_COLORS.muted, fontSize: 13, fontVariant: ['tabular-nums'] },
+  validationError: { color: QUESTION_COLORS.red, fontFamily: 'monospace', fontSize: 12 },
+  explanation: { gap: 5, paddingTop: 2 },
+  explanationTitle: { color: QUESTION_COLORS.ink, fontSize: 13, fontWeight: '800' },
+  explanationText: { color: QUESTION_COLORS.muted, fontSize: 13, lineHeight: 19 },
+  footer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: QUESTION_COLORS.border, backgroundColor: QUESTION_COLORS.surface },
+  primaryButton: { minHeight: 54, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, borderRadius: 16, borderCurve: 'continuous' },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.4 },
+  buttonPressed: { transform: [{ translateY: 2 }], opacity: 0.88 },
+  bottomSpacer: { height: 8 },
+  errorPage: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 28 },
+  errorTitle: { color: QUESTION_COLORS.ink, fontSize: 23, fontWeight: '800', textAlign: 'center' },
+  errorBody: { color: QUESTION_COLORS.muted, fontSize: 15, textAlign: 'center' },
+});

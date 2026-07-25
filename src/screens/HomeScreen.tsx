@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { Lucide } from '@react-native-vector-icons/lucide';
@@ -23,6 +23,12 @@ export default function HomeScreen() {
           <Pressable accessibilityRole="link" style={styles.profileLink}>
             <Lucide name="user" size={22} color="#FFFFFF" />
             <Text style={styles.profileLinkText}>VIEW PROFILE</Text>
+          </Pressable>
+        </Link>
+        <Link href={'/question-types' as never} asChild>
+          <Pressable accessibilityRole="link" style={styles.questionTypesLink}>
+            <Lucide name="shapes" size={22} color="#2289FD" />
+            <Text style={styles.questionTypesLinkText}>EXPLORE QUESTION TYPES</Text>
           </Pressable>
         </Link>
       </View>
@@ -76,5 +82,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.6,
+  },
+  questionTypesLink: {
+    marginTop: 14,
+    width: '100%',
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderWidth: 2,
+    borderColor: '#2289FD',
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    backgroundColor: '#EAF4FF',
+  },
+  questionTypesLinkText: {
+    color: '#1A6ECE',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
 });

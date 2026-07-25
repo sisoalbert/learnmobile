@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useSessionStore } from '@/state/sessionStore';
 
@@ -13,20 +14,23 @@ export default function RootLayout() {
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="index" />
-      <Stack.Screen name="welcome" />
-      <Stack.Screen name="onboarding" />
-      <Stack.Screen name="home" />
-      <Stack.Screen name="profile" />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="welcome" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="home" />
+        <Stack.Screen name="profile" />
+        <Stack.Screen name="question-types" />
 
-      <Stack.Protected guard={!isAuthenticated}>
-        <Stack.Screen name="signin" />
-      </Stack.Protected>
-    </Stack>
+        <Stack.Protected guard={!isAuthenticated}>
+          <Stack.Screen name="signin" />
+        </Stack.Protected>
+      </Stack>
+    </GestureHandlerRootView>
   );
 }
