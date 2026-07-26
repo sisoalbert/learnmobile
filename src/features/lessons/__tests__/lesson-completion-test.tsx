@@ -28,7 +28,7 @@ describe('lesson completion flow', () => {
     jest.useRealTimers();
   });
 
-  test('returns home from the results screen', () => {
+  test('continues from the results screen to the learning goal flow', () => {
     const screen = render(<LessonResultsScreen />);
 
     expect(screen.getByText('Learning legend!')).toBeTruthy();
@@ -36,8 +36,8 @@ describe('lesson completion flow', () => {
     expect(screen.getByText('93%')).toBeTruthy();
     expect(screen.getByText('2:49')).toBeTruthy();
 
-    fireEvent.press(screen.getByText('Go Home'));
+    fireEvent.press(screen.getByText('Continue'));
 
-    expect(mockReplace).toHaveBeenCalledWith('/home');
+    expect(mockReplace).toHaveBeenCalledWith('/learning-goal');
   });
 });

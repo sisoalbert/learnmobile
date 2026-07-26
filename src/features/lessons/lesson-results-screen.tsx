@@ -65,10 +65,10 @@ export default function LessonResultsScreen() {
 
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.replace('/home')}
+          onPress={() => router.replace('/learning-goal' as never)}
           style={({ pressed }) => [styles.homeButton, pressed && styles.homeButtonPressed]}
         >
-          <Text selectable style={styles.homeButtonText}>Go Home</Text>
+          <Text selectable style={styles.homeButtonText}>Continue</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
