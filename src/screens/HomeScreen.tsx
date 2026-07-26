@@ -63,6 +63,17 @@ export default function HomeScreen() {
             <Lucide name="chevron-right" size={20} color="#7C879C" />
           </Pressable>
         </Link>
+
+        <Link href={'/todo' as never} asChild>
+          <Pressable accessibilityRole="link" style={({ pressed }) => [styles.todoLink, pressed && styles.pressed]}>
+            <Lucide name="database" size={20} color="#178E43" />
+            <View style={styles.practiceCopy}>
+              <Text selectable style={styles.todoTitle}>Open the Convex todo demo</Text>
+              <Text selectable style={styles.practiceText}>View live sample data from the tasks table.</Text>
+            </View>
+            <Lucide name="chevron-right" size={20} color="#7C879C" />
+          </Pressable>
+        </Link>
       </ScrollView>
     </SafeAreaView>
   );
@@ -220,7 +231,9 @@ const styles = StyleSheet.create({
   topicPreview: { color: '#9A9FAE', fontSize: 11.5, fontWeight: '600' },
   lockedAction: { alignItems: 'center', gap: 9 },
   practiceLink: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderWidth: 1, borderColor: '#DCE6F3', borderRadius: 18, borderCurve: 'continuous', backgroundColor: '#F1F7FE' },
+  todoLink: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderWidth: 1, borderColor: '#D8EBDD', borderRadius: 18, borderCurve: 'continuous', backgroundColor: '#F0FAF3' },
   practiceCopy: { flex: 1, gap: 2 },
   practiceTitle: { color: '#245F9E', fontSize: 14, fontWeight: '800' },
+  todoTitle: { color: '#176B38', fontSize: 14, fontWeight: '800' },
   practiceText: { color: '#718096', fontSize: 12.5 },
 });

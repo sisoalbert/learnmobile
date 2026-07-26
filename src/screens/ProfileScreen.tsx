@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
 
 import { Header } from '@/common';
 import WelcomeAnimation from '@/common/WelcomeAnimation';
@@ -23,6 +24,9 @@ export default function ProfileScreen({
         <Text selectable style={styles.title}>
           {name}
         </Text>
+        <Link href="/todo" style={styles.link}>
+          View Todos
+        </Link>
       </ScrollView>
     </SafeAreaView>
   );
@@ -48,5 +52,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  link: {
+    marginTop: 16,
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

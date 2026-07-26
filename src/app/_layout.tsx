@@ -1,3 +1,4 @@
+import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -10,10 +11,15 @@ SplashScreen.setOptions({
   fade: true,
 });
 
+const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
+const convex = convexUrl
+  ? new ConvexReactClient(convexUrl, { unsavedChangesWarning: false })
+  : null;
+
 export default function RootLayout() {
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
 
-  return (
+  const app = (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack
         screenOptions={{
@@ -28,6 +34,7 @@ export default function RootLayout() {
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
         <Stack.Screen name="home" />
+        <Stack.Screen name="todo" />
         <Stack.Screen name="learning-paths" />
         <Stack.Screen name="profile" />
         <Stack.Screen name="question-types" />
@@ -38,4 +45,6 @@ export default function RootLayout() {
       </Stack>
     </GestureHandlerRootView>
   );
+
+  return convex ? <ConvexProvider client={convex}>{app}</ConvexProvider> : app;
 }
