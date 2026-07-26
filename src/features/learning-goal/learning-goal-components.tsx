@@ -257,15 +257,6 @@ export function StreakGoalSelectionStep({
   );
 }
 
-export function ProfileCreationPromptStep() {
-  return (
-    <StepFrame>
-      <SpeechBubble>Don&apos;t lose your progress! Let&apos;s create a profile.</SpeechBubble>
-      <Mascot />
-    </StepFrame>
-  );
-}
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.surface },
   page: { flex: 1, width: '100%', maxWidth: 600, alignSelf: 'center' },

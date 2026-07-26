@@ -5,13 +5,12 @@ import {
   DailyPracticePromptStep,
   HabitIntroductionStep,
   LearningGoalShell,
-  ProfileCreationPromptStep,
   StreakConfirmationStep,
   StreakGoalSelectionStep,
   type StreakGoal,
 } from '@/features/learning-goal/learning-goal-components';
 
-type FlowStep = 'habit' | 'practice' | 'confirmation' | 'goal' | 'goal-selected' | 'profile';
+type FlowStep = 'habit' | 'practice' | 'confirmation' | 'goal' | 'goal-selected';
 
 export default function LearningGoalFlowScreen() {
   const router = useRouter();
@@ -47,7 +46,7 @@ export default function LearningGoalFlowScreen() {
       <LearningGoalShell
         primaryDisabled={selectedGoal === null}
         primaryLabel="Commit to my goal"
-        onPrimaryPress={() => setStep('profile')}
+        onPrimaryPress={() => router.replace('/create-profile' as never)}
       >
         <StreakGoalSelectionStep
           selectedGoal={selectedGoal}
@@ -60,14 +59,4 @@ export default function LearningGoalFlowScreen() {
     );
   }
 
-  return (
-    <LearningGoalShell
-      primaryLabel="Create profile"
-      onPrimaryPress={() => router.replace('/signin')}
-      secondaryLabel="Later"
-      onSecondaryPress={() => router.replace('/home')}
-    >
-      <ProfileCreationPromptStep />
-    </LearningGoalShell>
-  );
 }

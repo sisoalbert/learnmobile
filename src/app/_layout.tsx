@@ -24,6 +24,9 @@ export default function RootLayout() {
         <Stack.Screen name="welcome" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="learning-goal" />
+        <Stack.Screen name="create-profile" />
+        <Stack.Screen name="terms" />
+        <Stack.Screen name="privacy" />
         <Stack.Screen name="home" />
         <Stack.Screen name="learning-paths" />
         <Stack.Screen name="profile" />

@@ -63,19 +63,11 @@ describe('post-lesson learning goal flow', () => {
     expect(screen.getByLabelText(goalLabel).props.accessibilityState).toEqual({ checked: true });
   });
 
-  test('routes profile actions to sign in and home', () => {
-    const createProfileScreen = advanceToGoalSelection();
-    fireEvent.press(createProfileScreen.getByLabelText('5 day streak goal, earn 500 gems'));
-    fireEvent.press(createProfileScreen.getByText('Commit to my goal'));
-    fireEvent.press(createProfileScreen.getByText('Create profile'));
+  test('continues to the dedicated create-profile flow', () => {
+    const screen = advanceToGoalSelection();
+    fireEvent.press(screen.getByLabelText('5 day streak goal, earn 500 gems'));
+    fireEvent.press(screen.getByText('Commit to my goal'));
 
-    expect(mockReplace).toHaveBeenCalledWith('/signin');
-
-    const laterScreen = advanceToGoalSelection();
-    fireEvent.press(laterScreen.getByLabelText('3 day streak goal, earn 30 gems'));
-    fireEvent.press(laterScreen.getByText('Commit to my goal'));
-    fireEvent.press(laterScreen.getByText('Later'));
-
-    expect(mockReplace).toHaveBeenCalledWith('/home');
+    expect(mockReplace).toHaveBeenCalledWith('/create-profile');
   });
 });
