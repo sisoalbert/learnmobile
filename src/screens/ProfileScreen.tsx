@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 
@@ -27,6 +27,12 @@ export default function ProfileScreen({
         <Link href="/todo" style={styles.link}>
           View Todos
         </Link>
+        <Pressable 
+          style={styles.signOutButton} 
+          onPress={() => Alert.alert('Sign out', 'Sign out functionality not implemented yet.')}
+        >
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -59,5 +65,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  signOutButton: {
+    marginTop: 32,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#FF3B30',
+    borderRadius: 8,
+  },
+  signOutText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

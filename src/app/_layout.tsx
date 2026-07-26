@@ -41,6 +41,7 @@ export default function RootLayout() {
 
         <Stack.Protected guard={!isAuthenticated}>
           <Stack.Screen name="signin" />
+          <Stack.Screen name="signup" />
         </Stack.Protected>
       </Stack>
     </GestureHandlerRootView>

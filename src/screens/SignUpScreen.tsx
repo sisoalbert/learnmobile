@@ -16,14 +16,14 @@ const COLORS = {
   disabledShadow: '#CECECE',
 };
 
-export default function SignInScreen() {
+export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const isFormValid = email.length > 0 && password.length > 0;
 
-  const handleSignIn = () => {
-    Alert.alert('Sign In', 'Sign in functionality not implemented yet.');
+  const handleSignUp = () => {
+    Alert.alert('Sign Up', 'Sign up functionality not implemented yet.');
   };
 
   return (
@@ -65,9 +65,9 @@ export default function SignInScreen() {
               pressed && isFormValid && styles.primaryButtonPressed,
             ]}
             disabled={!isFormValid}
-            onPress={handleSignIn}
+            onPress={handleSignUp}
           >
-            <Text selectable style={styles.primaryButtonText}>Sign In</Text>
+            <Text selectable style={styles.primaryButtonText}>Sign Up</Text>
           </Pressable>
         </View>
       </View>
