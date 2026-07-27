@@ -1,8 +1,11 @@
-import { ConvexProvider, ConvexReactClient } from 'convex/react';
+import { ConvexAuthProvider, useConvexAuth } from '@convex-dev/auth/react';
+import { ConvexReactClient } from 'convex/react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { authTokenStorage } from '@/auth/token-storage';
 import { useSessionStore } from '@/state/sessionStore';
 
 // Set the animation options. This is optional.
@@ -17,9 +20,35 @@ const convex = convexUrl
   : null;
 
 export default function RootLayout() {
-  const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
+  if (!convex) {
+    return <AppNavigator convexAuthenticated={false} />;
+  }
 
-  const app = (
+  return (
+    <ConvexAuthProvider client={convex} storage={authTokenStorage}>
+      <AuthenticatedAppNavigator />
+    </ConvexAuthProvider>
+  );
+}
+
+function AuthenticatedAppNavigator() {
+  const { isAuthenticated: convexAuthenticated, isLoading } = useConvexAuth();
+  const setAuthenticatedUser = useSessionStore((state) => state.setAuthenticatedUser);
+
+  useEffect(() => {
+    if (!isLoading && convexAuthenticated) {
+      setAuthenticatedUser({ id: 'convex-auth-user' });
+    }
+  }, [convexAuthenticated, isLoading, setAuthenticatedUser]);
+
+  return <AppNavigator convexAuthenticated={convexAuthenticated} />;
+}
+
+function AppNavigator({ convexAuthenticated }: { convexAuthenticated: boolean }) {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
+  const hasAuthenticatedSession = convexAuthenticated || isAuthenticated;
+
+  return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack
         screenOptions={{
@@ -39,13 +68,11 @@ export default function RootLayout() {
         <Stack.Screen name="profile" />
         <Stack.Screen name="question-types" />
 
-        <Stack.Protected guard={!isAuthenticated}>
+        <Stack.Protected guard={!hasAuthenticatedSession}>
           <Stack.Screen name="signin" />
           <Stack.Screen name="signup" />
         </Stack.Protected>
       </Stack>
     </GestureHandlerRootView>
   );
-
-  return convex ? <ConvexProvider client={convex}>{app}</ConvexProvider> : app;
 }

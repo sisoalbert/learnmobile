@@ -1,10 +1,12 @@
-import React from 'react';
+import { useAuthActions } from '@convex-dev/auth/react';
+import { Link, useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
 
 import { Header } from '@/common';
 import WelcomeAnimation from '@/common/WelcomeAnimation';
+import { useSessionStore } from '@/state/sessionStore';
 
 export default function ProfileScreen({
   name,
@@ -13,6 +15,26 @@ export default function ProfileScreen({
   name: string;
   showSettings?: boolean;
 }) {
+  const router = useRouter();
+  const { signOut: signOutFromConvex } = useAuthActions();
+  const clearLocalSession = useSessionStore((state) => state.signOut);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+
+    setIsSigningOut(true);
+
+    try {
+      await signOutFromConvex();
+      clearLocalSession();
+      router.replace('/signin');
+    } catch {
+      Alert.alert('Unable to sign out', 'Please check your connection and try again.');
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Header showSettings={showSettings} />
@@ -27,11 +49,20 @@ export default function ProfileScreen({
         <Link href="/todo" style={styles.link}>
           View Todos
         </Link>
-        <Pressable 
-          style={styles.signOutButton} 
-          onPress={() => Alert.alert('Sign out', 'Sign out functionality not implemented yet.')}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+          disabled={isSigningOut}
+          style={({ pressed }) => [
+            styles.signOutButton,
+            pressed && !isSigningOut && styles.signOutButtonPressed,
+            isSigningOut && styles.signOutButtonDisabled,
+          ]}
+          onPress={() => void handleSignOut()}
         >
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>
+            {isSigningOut ? 'Signing Out…' : 'Sign Out'}
+          </Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -72,6 +103,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     backgroundColor: '#FF3B30',
     borderRadius: 8,
+  },
+  signOutButtonPressed: {
+    opacity: 0.8,
+  },
+  signOutButtonDisabled: {
+    opacity: 0.55,
   },
   signOutText: {
     color: '#FFFFFF',

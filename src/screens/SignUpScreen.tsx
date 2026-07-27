@@ -1,9 +1,12 @@
+import { useAuthActions } from '@convex-dev/auth/react';
+import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, Pressable, Text, Alert } from 'react-native';
+import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
+import { useSessionStore } from '@/state/sessionStore';
 
 const COLORS = {
   blue: '#1CB0F6',
@@ -17,13 +20,42 @@ const COLORS = {
 };
 
 export default function SignUpScreen() {
+  const router = useRouter();
+  const { signIn } = useAuthActions();
+  const setAuthenticatedUser = useSessionStore((state) => state.setAuthenticatedUser);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isFormValid = email.length > 0 && password.length > 0;
+  const normalizedEmail = email.trim().toLowerCase();
+  const isFormValid = normalizedEmail.length > 0 && password.length >= 8;
 
-  const handleSignUp = () => {
-    Alert.alert('Sign Up', 'Sign up functionality not implemented yet.');
+  const handleSignUp = async () => {
+    if (!isFormValid || isSubmitting) return;
+
+    setErrorMessage('');
+    setIsSubmitting(true);
+
+    try {
+      const result = await signIn('password', {
+        email: normalizedEmail,
+        password,
+        flow: 'signUp',
+      });
+
+      if (!result.signingIn) {
+        setErrorMessage('We could not complete sign up. Please try again.');
+        return;
+      }
+
+      setAuthenticatedUser({ id: normalizedEmail, email: normalizedEmail });
+      router.replace('/home');
+    } catch (error) {
+      setErrorMessage(getAuthErrorMessage(error, 'Unable to create your account.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -44,8 +76,12 @@ export default function SignUpScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
+            editable={!isSubmitting}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => {
+              setEmail(value);
+              setErrorMessage('');
+            }}
           />
           <TextInput
             style={styles.input}
@@ -53,22 +89,47 @@ export default function SignUpScreen() {
             placeholderTextColor="#9AA2B1"
             secureTextEntry
             autoCapitalize="none"
+            autoComplete="new-password"
+            editable={!isSubmitting}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(value) => {
+              setPassword(value);
+              setErrorMessage('');
+            }}
+            onSubmitEditing={() => void handleSignUp()}
           />
+
+          <Text selectable style={styles.passwordHint}>
+            Use at least 8 characters.
+          </Text>
+
+          {errorMessage ? (
+            <Text accessibilityRole="alert" selectable style={styles.errorText}>
+              {errorMessage}
+            </Text>
+          ) : null}
           
           <Pressable 
             accessibilityRole="button"
             style={({ pressed }) => [
               styles.primaryButton,
-              !isFormValid && styles.primaryButtonDisabled,
-              pressed && isFormValid && styles.primaryButtonPressed,
+              (!isFormValid || isSubmitting) && styles.primaryButtonDisabled,
+              pressed && isFormValid && !isSubmitting && styles.primaryButtonPressed,
             ]}
-            disabled={!isFormValid}
-            onPress={handleSignUp}
+            disabled={!isFormValid || isSubmitting}
+            onPress={() => void handleSignUp()}
           >
-            <Text selectable style={styles.primaryButtonText}>Sign Up</Text>
+            <Text selectable style={styles.primaryButtonText}>
+              {isSubmitting ? 'Creating account…' : 'Sign Up'}
+            </Text>
           </Pressable>
+
+          <View style={styles.alternateAction}>
+            <Text selectable style={styles.alternateText}>Already have an account?</Text>
+            <Link href="/signin" replace style={styles.alternateLink}>
+              Sign in
+            </Link>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -110,6 +171,17 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '500',
   },
+  passwordHint: {
+    marginTop: -8,
+    color: '#737D91',
+    fontSize: 13,
+  },
+  errorText: {
+    color: '#C43D3D',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
   primaryButton: {
     marginTop: 8,
     minHeight: 56,
@@ -136,4 +208,31 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
+  alternateAction: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: 8,
+  },
+  alternateText: {
+    color: '#737D91',
+    fontSize: 15,
+  },
+  alternateLink: {
+    color: COLORS.blueDark,
+    fontSize: 15,
+    fontWeight: '800',
+  },
 });
+
+function getAuthErrorMessage(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : '';
+
+  if (message.toLowerCase().includes('already')) {
+    return 'An account with this email already exists. Try signing in.';
+  }
+
+  return fallback;
+}
