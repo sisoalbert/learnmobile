@@ -11,7 +11,23 @@ eas update --channel production --message "p2p message delete and copy"
 # 3. update at [RELEASES.md](RELEASES.md) and merge it back to main
 
 # 4 vercel prod
-vercel --prod
+
+## Convex Backend Deployment
+
+# 1. Test development backend
+```bash
+npx convex dev
+```
+
+# 2. Deploy backend functions and schema to production
+```bash
+npx convex deploy
+```
+
+# 3. Build the Expo app with the production Convex URL
+```bash
+eas build --profile production
+```
 
 # Expo CLI Commands
 
