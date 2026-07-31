@@ -39,7 +39,15 @@
         }
       ],
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "learnmobile-expo",
+          "organization": "learnmobile"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

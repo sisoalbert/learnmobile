@@ -10,7 +10,7 @@ import { useSessionStore } from '@/state/sessionStore';
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
-  dsn: 'https://4927ae695dd9144418fc0899a7050b6d@o4511825695473664.ingest.us.sentry.io/4511825701109765',
+  dsn: 'https://35679436932e413d622d5a9e0b873249@o4511830907355136.ingest.us.sentry.io/4511830910697474',
 
   // Adds more context data to events (IP address, cookies, user, etc.)
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
