@@ -7,6 +7,26 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { authTokenStorage } from '@/auth/token-storage';
 import { useSessionStore } from '@/state/sessionStore';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://4927ae695dd9144418fc0899a7050b6d@o4511825695473664.ingest.us.sentry.io/4511825701109765',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 // Set the animation options. This is optional.
 SplashScreen.setOptions({
@@ -19,7 +39,7 @@ const convex = convexUrl
   ? new ConvexReactClient(convexUrl, { unsavedChangesWarning: false })
   : null;
 
-export default function RootLayout() {
+function RootLayout() {
   if (!convex) {
     return <AppNavigator convexAuthenticated={false} />;
   }
@@ -30,6 +50,8 @@ export default function RootLayout() {
     </ConvexAuthProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 
 function AuthenticatedAppNavigator() {
   const { isAuthenticated: convexAuthenticated, isLoading } = useConvexAuth();
