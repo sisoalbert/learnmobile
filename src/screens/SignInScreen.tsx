@@ -1,11 +1,11 @@
 import { useAuthActions } from '@convex-dev/auth/react';
-import * as Sentry from '@sentry/react-native';
-import { Link, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
-import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Lucide } from '@react-native-vector-icons/lucide';
+import * as Sentry from '@sentry/react-native';
+import { Image } from 'expo-image';
+import { Link, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
 import { useSessionStore } from '@/state/sessionStore';
@@ -30,6 +30,18 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const rawDeployment =
+    process.env.EXPO_PUBLIC_CONVEX_DEPLOYMENT ||
+    process.env.CONVEX_DEPLOYMENT ||
+    (process.env.EXPO_PUBLIC_CONVEX_URL
+      ? process.env.EXPO_PUBLIC_CONVEX_URL.replace(/^https?:\/\//, '').replace(/\.convex\.(cloud|site)$/, '')
+      : 'prod:laudable-labrador-921');
+
+  const deploymentName =
+    rawDeployment.startsWith('dev:') || rawDeployment.startsWith('prod:')
+      ? rawDeployment
+      : `prod:${rawDeployment}`;
 
   const normalizedEmail = email.trim().toLowerCase();
   const isFormValid = normalizedEmail.length > 0 && password.length > 0;
@@ -88,11 +100,9 @@ export default function SignInScreen() {
         />
         
         <View style={styles.form}>
-          {__DEV__ ? (
-            <Text selectable style={styles.devModeBadge}>
-              {process.env.CONVEX_DEPLOYMENT || 'dev:beloved-marmot-829'}
-            </Text>
-          ) : null}
+          <Text selectable style={styles.devModeBadge}>
+            {deploymentName}
+          </Text>
           <TextInput
             style={styles.input}
             placeholder="Email"

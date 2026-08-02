@@ -14,6 +14,8 @@ eas update --channel production --message "p2p message delete and copy"
 
 ## Convex Backend Deployment
 
+See [Convex Auth Setup and Production Runbook](docs/authentication.md) before deploying authentication changes.
+
 # 1. Test development backend
 ```bash
 npx convex dev
