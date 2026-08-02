@@ -3,12 +3,16 @@ import * as Sentry from '@sentry/react-native';
 import { useMutation, useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
 import { useSessionStore } from '@/state/sessionStore';
 import { api } from '../../convex/_generated/api';
+
+const DELETE_ACCOUNT_TITLE = 'Delete account?';
+const DELETE_ACCOUNT_MESSAGE =
+  'This permanently deletes your account and signs you out. This can’t be undone.';
 
 export default function ProfileScreen({
   showSettings = false,
@@ -76,9 +80,16 @@ export default function ProfileScreen({
   const handleDeleteAccount = () => {
     if (isAccountActionPending) return;
 
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${DELETE_ACCOUNT_TITLE}\n\n${DELETE_ACCOUNT_MESSAGE}`)) {
+        void deleteAccount();
+      }
+      return;
+    }
+
     Alert.alert(
-      'Delete account?',
-      'This permanently deletes your account and signs you out. This can’t be undone.',
+      DELETE_ACCOUNT_TITLE,
+      DELETE_ACCOUNT_MESSAGE,
       [
         { text: 'Cancel', style: 'cancel' },
         {

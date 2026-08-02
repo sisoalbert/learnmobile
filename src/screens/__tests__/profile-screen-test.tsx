@@ -1,5 +1,5 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 import { useSessionStore } from '@/state/sessionStore';
 
@@ -52,6 +52,24 @@ describe('profile account actions', () => {
     act(() => destructiveButton?.onPress?.());
   }
 
+  function mockWebConfirmation(confirmed: boolean) {
+    const platformProperty = jest.replaceProperty(Platform, 'OS', 'web');
+    const confirmMock = jest.fn(() => confirmed);
+
+    Object.defineProperty(window, 'confirm', {
+      configurable: true,
+      value: confirmMock,
+    });
+
+    return {
+      confirmMock,
+      restore: () => {
+        Reflect.deleteProperty(window, 'confirm');
+        platformProperty.restore();
+      },
+    };
+  }
+
   test('places delete account below sign out for authenticated users', () => {
     const screen = render(<ProfileScreen name="Profile" />);
 
@@ -87,6 +105,43 @@ describe('profile account actions', () => {
       expect(useSessionStore.getState().isAuthenticated).toBe(false);
       expect(mockReplace).toHaveBeenCalledWith('/signin');
     });
+  });
+
+  test('uses the browser confirmation before deleting on web', async () => {
+    const browser = mockWebConfirmation(true);
+
+    try {
+      const screen = render(<ProfileScreen name="Profile" />);
+
+      fireEvent.press(screen.getByLabelText('Delete account'));
+
+      expect(browser.confirmMock).toHaveBeenCalledWith(
+        'Delete account?\n\nThis permanently deletes your account and signs you out. This can’t be undone.',
+      );
+
+      await waitFor(() => {
+        expect(mockDeleteCurrentUser).toHaveBeenCalledWith({});
+        expect(mockSignOutFromConvex).toHaveBeenCalledTimes(1);
+        expect(mockReplace).toHaveBeenCalledWith('/signin');
+      });
+    } finally {
+      browser.restore();
+    }
+  });
+
+  test('keeps the account when browser confirmation is cancelled', () => {
+    const browser = mockWebConfirmation(false);
+
+    try {
+      const screen = render(<ProfileScreen name="Profile" />);
+
+      fireEvent.press(screen.getByLabelText('Delete account'));
+
+      expect(browser.confirmMock).toHaveBeenCalledTimes(1);
+      expect(mockDeleteCurrentUser).not.toHaveBeenCalled();
+    } finally {
+      browser.restore();
+    }
   });
 
   test('preserves the session and reports a failed deletion', async () => {
