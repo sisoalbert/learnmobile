@@ -41,7 +41,7 @@ const convex = convexUrl
 
 function RootLayout() {
   if (!convex) {
-    return <AppNavigator convexAuthenticated={false} />;
+    return <AppNavigator />;
   }
 
   return (
@@ -63,13 +63,10 @@ function AuthenticatedAppNavigator() {
     }
   }, [convexAuthenticated, isLoading, setAuthenticatedUser]);
 
-  return <AppNavigator convexAuthenticated={convexAuthenticated} />;
+  return <AppNavigator />;
 }
 
-function AppNavigator({ convexAuthenticated }: { convexAuthenticated: boolean }) {
-  const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
-  const hasAuthenticatedSession = convexAuthenticated || isAuthenticated;
-
+function AppNavigator() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack
@@ -90,10 +87,8 @@ function AppNavigator({ convexAuthenticated }: { convexAuthenticated: boolean })
         <Stack.Screen name="profile" />
         <Stack.Screen name="question-types" />
 
-        <Stack.Protected guard={!hasAuthenticatedSession}>
-          <Stack.Screen name="signin" />
-          <Stack.Screen name="signup" />
-        </Stack.Protected>
+        <Stack.Screen name="signin" />
+        <Stack.Screen name="signup" />
       </Stack>
     </GestureHandlerRootView>
   );

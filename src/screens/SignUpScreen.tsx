@@ -1,9 +1,11 @@
 import { useAuthActions } from '@convex-dev/auth/react';
+import * as Sentry from '@sentry/react-native';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Lucide } from '@react-native-vector-icons/lucide';
 
 import { Header } from '@/common';
 import { useSessionStore } from '@/state/sessionStore';
@@ -25,6 +27,7 @@ export default function SignUpScreen() {
   const setAuthenticatedUser = useSessionStore((state) => state.setAuthenticatedUser);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,6 +48,13 @@ export default function SignUpScreen() {
       });
 
       if (!result.signingIn) {
+        Sentry.captureMessage('Auth sign up did not complete', {
+          level: 'warning',
+          tags: {
+            area: 'auth',
+            operation: 'sign_up',
+          },
+        });
         setErrorMessage('We could not complete sign up. Please try again.');
         return;
       }
@@ -52,6 +62,15 @@ export default function SignUpScreen() {
       setAuthenticatedUser({ id: normalizedEmail, email: normalizedEmail });
       router.replace('/home');
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      Sentry.captureMessage(message, {
+        level: 'warning',
+        tags: {
+          area: 'auth',
+          operation: 'sign_up',
+        },
+      });
       setErrorMessage(getAuthErrorMessage(error, 'Unable to create your account.'));
     } finally {
       setIsSubmitting(false);
@@ -60,7 +79,7 @@ export default function SignUpScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
+      <Header onBack={() => router.replace('/')} />
       <View style={styles.content}>
         <Image
           source={require('@/assets/logo.png')}
@@ -83,21 +102,36 @@ export default function SignUpScreen() {
               setErrorMessage('');
             }}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#9AA2B1"
-            secureTextEntry
-            autoCapitalize="none"
-            autoComplete="new-password"
-            editable={!isSubmitting}
-            value={password}
-            onChangeText={(value) => {
-              setPassword(value);
-              setErrorMessage('');
-            }}
-            onSubmitEditing={() => void handleSignUp()}
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor="#9AA2B1"
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoComplete="new-password"
+              editable={!isSubmitting}
+              value={password}
+              onChangeText={(value) => {
+                setPassword(value);
+                setErrorMessage('');
+              }}
+              onSubmitEditing={() => void handleSignUp()}
+            />
+            <Pressable
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => setShowPassword((prev) => !prev)}
+              style={({ pressed }) => [styles.eyeButton, pressed && styles.eyeButtonPressed]}
+            >
+              <Lucide
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={22}
+                color="#9AA2B1"
+              />
+            </Pressable>
+          </View>
 
           <Text selectable style={styles.passwordHint}>
             Use at least 8 characters.
@@ -170,6 +204,33 @@ const styles = StyleSheet.create({
     borderColor: COLORS.inputBorder,
     color: COLORS.text,
     fontWeight: '500',
+  },
+  passwordContainer: {
+    minHeight: 56,
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: COLORS.inputBorder,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 16,
+    paddingRight: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 18,
+    color: COLORS.text,
+    fontWeight: '500',
+    paddingVertical: 12,
+  },
+  eyeButton: {
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  eyeButtonPressed: {
+    opacity: 0.6,
   },
   passwordHint: {
     marginTop: -8,

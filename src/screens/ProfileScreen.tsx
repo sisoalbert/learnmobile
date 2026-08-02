@@ -1,15 +1,15 @@
 import { useAuthActions } from '@convex-dev/auth/react';
-import { Link, useRouter } from 'expo-router';
+import { useQuery } from 'convex/react';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, Pressable, Alert } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
-import WelcomeAnimation from '@/common/WelcomeAnimation';
 import { useSessionStore } from '@/state/sessionStore';
+import { api } from '../../convex/_generated/api';
 
 export default function ProfileScreen({
-  name,
   showSettings = false,
 }: {
   name: string;
@@ -17,8 +17,14 @@ export default function ProfileScreen({
 }) {
   const router = useRouter();
   const { signOut: signOutFromConvex } = useAuthActions();
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
+  const user = useSessionStore((state) => state.user);
   const clearLocalSession = useSessionStore((state) => state.signOut);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const currentUser = useQuery(api.users.current, isAuthenticated ? {} : 'skip');
+
+  const accountDescription =
+    currentUser?.email ?? user?.email ?? currentUser?.name ?? user?.name ?? 'Signed in';
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
@@ -38,33 +44,48 @@ export default function ProfileScreen({
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Header showSettings={showSettings} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.content}
-      >
-        <WelcomeAnimation />
-        <Text selectable style={styles.title}>
-          {name}
-        </Text>
-        <Link href="/todo" style={styles.link}>
-          View Todos
-        </Link>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Sign out"
-          disabled={isSigningOut}
-          style={({ pressed }) => [
-            styles.signOutButton,
-            pressed && !isSigningOut && styles.signOutButtonPressed,
-            isSigningOut && styles.signOutButtonDisabled,
-          ]}
-          onPress={() => void handleSignOut()}
-        >
-          <Text style={styles.signOutText}>
-            {isSigningOut ? 'Signing Out…' : 'Sign Out'}
+      <View style={styles.content}>
+        <View style={styles.accountDetails}>
+          <Text selectable style={styles.title}>
+            {isAuthenticated ? 'User' : 'Guest'}
           </Text>
-        </Pressable>
-      </ScrollView>
+          <Text selectable style={styles.description}>
+            {isAuthenticated ? accountDescription : 'not signed in'}
+          </Text>
+        </View>
+
+        {isAuthenticated ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+            disabled={isSigningOut}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.actionButton,
+              pressed && !isSigningOut && styles.actionButtonPressed,
+              isSigningOut && styles.actionButtonDisabled,
+            ]}
+            onPress={() => void handleSignOut()}
+          >
+            <Text style={styles.actionText}>
+              {isSigningOut ? 'signing out…' : 'sign out'}
+            </Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Sign in"
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.actionButton,
+              pressed && styles.actionButtonPressed,
+            ]}
+            onPress={() => router.push('/signin')}
+          >
+            <Text style={styles.actionText}>sign in</Text>
+          </Pressable>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -79,41 +100,39 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingTop: 40,
+    paddingHorizontal: 48,
     paddingBottom: 56,
   },
+  accountDetails: {
+    gap: 10,
+  },
   title: {
-    color: '#4B4B4B',
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  link: {
-    marginTop: 16,
-    color: '#007AFF',
+    color: '#000000',
     fontSize: 16,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+    fontWeight: '700',
   },
-  signOutButton: {
-    marginTop: 32,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
+  description: {
+    color: '#000000',
+    fontSize: 16,
   },
-  signOutButtonPressed: {
-    opacity: 0.8,
+  actionButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
-  signOutButtonDisabled: {
+  actionButtonPressed: {
+    opacity: 0.6,
+  },
+  actionButtonDisabled: {
     opacity: 0.55,
   },
-  signOutText: {
-    color: '#FFFFFF',
+  actionText: {
+    color: '#FF0000',
     fontSize: 16,
-    fontWeight: '600',
     textAlign: 'center',
   },
 });

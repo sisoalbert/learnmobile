@@ -1,7 +1,6 @@
-import * as Sentry from '@sentry/react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useOnboardingStore } from '@/state/onboarding-store';
@@ -36,7 +35,6 @@ export default function WelcomeScreen() {
         </View>
 
         <View style={styles.buttonContainer}>
-          <Button title='Try!' onPress={ () => { Sentry.captureException(new Error('First error')) }}/>
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ disabled: !hasHydrated }}
