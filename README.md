@@ -183,17 +183,22 @@ eas submit --platform android
 
 Push over-the-air JavaScript/asset updates without a new store build.
 
+See the complete [OTA Updates Runbook](docs/ota-updates.md) for initial activation, preview testing, production rollout, and rollback procedures.
+
 ### Publish an update
 
 ```bash
-npx eas-cli update --channel production --message "Description of changes" --non-interactive
+npm run update:preview -- --message "Description of changes"
+npm run update:production -- --message "Description of changes"
 ```
 
-### Build number
+SDK 55 and later require the matching EAS environment when publishing. The scripts select `preview` or `production` so the update is bundled with the correct environment variables.
 
-Each OTA update has a `buildNumber` in `app.config.js` (`extra.buildNumber`). Bump it before publishing so users can see which update they're on in the **App Updates** screen (`Settings > App Updates`), displayed as `1.0.0 (2)`.
+### Runtime version
 
-The `buildNumber` is independent of `version` — changing `version` changes the `runtimeVersion` (due to `appVersion` policy), which means the update won't reach existing users. Only bump `version` when shipping a new native build.
+The project uses the `appVersion` runtime policy. JavaScript and asset-only updates can target installed builds with the same `version` from `app.json`.
+
+Changing native dependencies or native configuration requires a new store build. Bump `version` for that build; the new version creates a new OTA runtime boundary.
 
 ### Channels
 
@@ -203,11 +208,10 @@ The `buildNumber` is independent of `version` — changing `version` changes the
 | `preview`     | `preview`        | Internal testing (TestFlight / internal track) |
 | `development` | `development`    | Dev client builds         |
 
-cd moneytracker-app && eas update --channel production --message "Add real-time moreBanner subscription"
-
 ### Workflow
 
 1. Make your JS/asset changes
-2. Bump `extra.buildNumber` in `app.config.js`
-3. Run `npx eas-cli update --channel production --message "your message" --non-interactive`
-4. Users pick up the update automatically or via the App Updates screen
+2. Publish to preview with `npm run update:preview -- --message "your message"`
+3. Verify the update in a preview release build
+4. Publish the verified commit with `npm run update:production -- --message "your message"`
+5. Production builds download updates on launch and apply them after restart, or users can check manually in Settings

@@ -1,7 +1,7 @@
 {
   "name": "learnmobile",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "dependencies": {
     "@auth/core": "^0.41.1",
     "@babel/parser": "^7.29.7",
@@ -25,6 +25,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.1",
     "expo-system-ui": "~57.0.1",
+    "expo-updates": "~57.0.11",
     "expo-web-browser": "~57.0.2",
     "lottie-react-native": "^7.2.2",
     "lottie-web": "^5.12.2",
@@ -59,6 +60,8 @@
     "dev:web": "expo start --web",
     "deploy": "npm run build:web && wrangler deploy",
     "deploy:web": "npm run build:web && wrangler deploy",
+    "update:preview": "eas update --channel preview --environment preview",
+    "update:production": "eas update --channel production --environment production",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "android:prod": "NODE_ENV=production expo run:android --variant release --no-build-cache",

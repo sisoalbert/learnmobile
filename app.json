@@ -2,7 +2,7 @@
   "expo": {
     "name": "Learn Expo",
     "slug": "learn",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "learn",
@@ -58,6 +58,14 @@
       "eas": {
         "projectId": "22c7498c-80f4-4791-bd83-f9d12f2f5758"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/22c7498c-80f4-4791-bd83-f9d12f2f5758",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

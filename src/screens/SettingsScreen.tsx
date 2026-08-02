@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import * as Sentry from '@sentry/react-native';
+import * as Updates from 'expo-updates';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Lucide } from '@react-native-vector-icons/lucide';
@@ -30,10 +32,53 @@ const findLabel = <T extends string | number>(
 export default function SettingsScreen() {
   const router = useRouter();
   const onboarding = useOnboardingStore();
+  const [isCheckingForUpdate, setIsCheckingForUpdate] = useState(false);
 
   const handleReset = () => {
     onboarding.resetOnboarding();
     router.replace('/');
+  };
+
+  const handleCheckForUpdates = async () => {
+    if (!Updates.isEnabled) {
+      Alert.alert(
+        'Updates unavailable',
+        'OTA updates are available in preview and production builds.',
+      );
+      return;
+    }
+
+    setIsCheckingForUpdate(true);
+
+    try {
+      const update = await Updates.checkForUpdateAsync();
+
+      if (!update.isAvailable) {
+        Alert.alert('Up to date', 'You already have the latest available update.');
+        return;
+      }
+
+      await Updates.fetchUpdateAsync();
+      Alert.alert('Update ready', 'Restart Learn Expo to apply the update.', [
+        { text: 'Later', style: 'cancel' },
+        {
+          text: 'Restart now',
+          onPress: () => {
+            void Updates.reloadAsync();
+          },
+        },
+      ]);
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          area: 'updates',
+          operation: 'check_for_update',
+        },
+      });
+      Alert.alert('Unable to check for updates', 'Please check your connection and try again.');
+    } finally {
+      setIsCheckingForUpdate(false);
+    }
   };
 
   const selections = useMemo<SelectionItem[]>(() => {
@@ -134,25 +179,55 @@ export default function SettingsScreen() {
           </Text>
         }
         ListFooterComponent={
-          onboarding.hasHydrated ? (
-            <View style={styles.resetSection}>
-              <Text selectable style={styles.resetDescription}>
-                This will clear your onboarding data and return you to the Welcome screen.
-              </Text>
+          <View style={styles.footer}>
+            <View style={styles.updateSection}>
+              <View style={styles.updateHeading}>
+                <Text selectable style={styles.updateTitle}>
+                  App updates
+                </Text>
+                <Text selectable style={styles.updateDescription}>
+                  {Updates.isEnabled
+                    ? `Channel ${Updates.channel ?? 'unassigned'} · Runtime ${Updates.runtimeVersion ?? 'unknown'}`
+                    : 'Available in preview and production builds.'}
+                </Text>
+              </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Reset onboarding data"
-                onPress={handleReset}
+                accessibilityLabel="Check for app updates"
+                disabled={isCheckingForUpdate}
+                onPress={() => void handleCheckForUpdates()}
                 style={({ pressed }) => [
-                  styles.resetButton,
-                  pressed && styles.resetButtonPressed,
+                  styles.updateButton,
+                  pressed && !isCheckingForUpdate && styles.updateButtonPressed,
+                  isCheckingForUpdate && styles.updateButtonDisabled,
                 ]}
               >
-                <Lucide name="rotate-ccw" size={19} color="#D64545" />
-                <Text style={styles.resetButtonText}>RESET ONBOARDING</Text>
+                <Lucide name="refresh-cw" size={19} color="#1899D6" />
+                <Text style={styles.updateButtonText}>
+                  {isCheckingForUpdate ? 'CHECKING…' : 'CHECK FOR UPDATES'}
+                </Text>
               </Pressable>
             </View>
-          ) : null
+            {onboarding.hasHydrated ? (
+              <View style={styles.resetSection}>
+                <Text selectable style={styles.resetDescription}>
+                  This will clear your onboarding data and return you to the Welcome screen.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Reset onboarding data"
+                  onPress={handleReset}
+                  style={({ pressed }) => [
+                    styles.resetButton,
+                    pressed && styles.resetButtonPressed,
+                  ]}
+                >
+                  <Lucide name="rotate-ccw" size={19} color="#D64545" />
+                  <Text style={styles.resetButtonText}>RESET ONBOARDING</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
         }
         contentContainerStyle={styles.content}
         style={styles.list}
@@ -219,9 +294,54 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
   },
+  footer: {
+    gap: 28,
+    paddingTop: 28,
+  },
+  updateSection: {
+    gap: 12,
+  },
+  updateHeading: {
+    gap: 5,
+  },
+  updateTitle: {
+    color: '#2D2D2D',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  updateDescription: {
+    color: '#737373',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  updateButton: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: '#1899D6',
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    backgroundColor: '#F2FAFF',
+  },
+  updateButtonPressed: {
+    opacity: 0.68,
+  },
+  updateButtonDisabled: {
+    opacity: 0.55,
+  },
+  updateButtonText: {
+    color: '#1899D6',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
   resetSection: {
     gap: 12,
-    paddingTop: 28,
   },
   resetDescription: {
     color: '#737373',
