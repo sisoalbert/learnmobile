@@ -64,6 +64,7 @@ export default function HomeScreen() {
           </Pressable>
         </Link>
 
+        {/* TODO: Restore the Convex todo demo link when it is ready.
         <Link href={'/todo' as never} asChild>
           <Pressable accessibilityRole="link" style={({ pressed }) => [styles.todoLink, pressed && styles.pressed]}>
             <Lucide name="database" size={20} color="#178E43" />
@@ -74,6 +75,7 @@ export default function HomeScreen() {
             <Lucide name="chevron-right" size={20} color="#7C879C" />
           </Pressable>
         </Link>
+        */}
       </ScrollView>
     </SafeAreaView>
   );

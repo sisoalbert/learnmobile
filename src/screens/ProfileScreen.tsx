@@ -1,5 +1,6 @@
 import { useAuthActions } from '@convex-dev/auth/react';
-import { useQuery } from 'convex/react';
+import * as Sentry from '@sentry/react-native';
+import { useMutation, useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -21,13 +22,16 @@ export default function ProfileScreen({
   const user = useSessionStore((state) => state.user);
   const clearLocalSession = useSessionStore((state) => state.signOut);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const currentUser = useQuery(api.users.current, isAuthenticated ? {} : 'skip');
+  const deleteCurrentUser = useMutation(api.users.deleteCurrent);
+  const isAccountActionPending = isSigningOut || isDeletingAccount;
 
   const accountDescription =
     currentUser?.email ?? user?.email ?? currentUser?.name ?? user?.name ?? 'Signed in';
 
   const handleSignOut = async () => {
-    if (isSigningOut) return;
+    if (isAccountActionPending) return;
 
     setIsSigningOut(true);
 
@@ -35,10 +39,55 @@ export default function ProfileScreen({
       await signOutFromConvex();
       clearLocalSession();
       router.replace('/signin');
-    } catch {
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          area: 'auth',
+          operation: 'sign_out',
+        },
+      });
       Alert.alert('Unable to sign out', 'Please check your connection and try again.');
       setIsSigningOut(false);
     }
+  };
+
+  const deleteAccount = async () => {
+    if (isAccountActionPending) return;
+
+    setIsDeletingAccount(true);
+
+    try {
+      await deleteCurrentUser({});
+      await signOutFromConvex();
+      clearLocalSession();
+      router.replace('/signin');
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          area: 'auth',
+          operation: 'delete_account',
+        },
+      });
+      Alert.alert('Unable to delete account', 'Please check your connection and try again.');
+      setIsDeletingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    if (isAccountActionPending) return;
+
+    Alert.alert(
+      'Delete account?',
+      'This permanently deletes your account and signs you out. This can’t be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: () => void deleteAccount(),
+        },
+      ],
+    );
   };
 
   return (
@@ -55,22 +104,41 @@ export default function ProfileScreen({
         </View>
 
         {isAuthenticated ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-            disabled={isSigningOut}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.actionButton,
-              pressed && !isSigningOut && styles.actionButtonPressed,
-              isSigningOut && styles.actionButtonDisabled,
-            ]}
-            onPress={() => void handleSignOut()}
-          >
-            <Text style={styles.actionText}>
-              {isSigningOut ? 'signing out…' : 'sign out'}
-            </Text>
-          </Pressable>
+          <View style={styles.accountActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+              disabled={isAccountActionPending}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && !isAccountActionPending && styles.actionButtonPressed,
+                isAccountActionPending && styles.actionButtonDisabled,
+              ]}
+              onPress={() => void handleSignOut()}
+            >
+              <Text style={styles.actionText}>
+                {isSigningOut ? 'signing out…' : 'sign out'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Delete account"
+              disabled={isAccountActionPending}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && !isAccountActionPending && styles.actionButtonPressed,
+                isAccountActionPending && styles.actionButtonDisabled,
+              ]}
+              onPress={handleDeleteAccount}
+            >
+              <Text style={styles.actionText}>
+                {isDeletingAccount ? 'deleting account…' : 'delete account'}
+              </Text>
+            </Pressable>
+          </View>
         ) : (
           <Pressable
             accessibilityRole="button"
@@ -109,6 +177,10 @@ const styles = StyleSheet.create({
   },
   accountDetails: {
     gap: 10,
+  },
+  accountActions: {
+    alignItems: 'center',
+    gap: 4,
   },
   title: {
     color: '#000000',
