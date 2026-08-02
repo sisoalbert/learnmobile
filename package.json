@@ -38,6 +38,7 @@
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.0",
+    "resend": "^6.18.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
