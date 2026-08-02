@@ -148,6 +148,10 @@ export default function SignInScreen() {
             </Pressable>
           </View>
 
+          <Link href="/forgot-password" style={styles.forgotPasswordLink}>
+            Forgot password?
+          </Link>
+
           {errorMessage ? (
             <Text accessibilityRole="alert" selectable style={styles.errorText}>
               {errorMessage}
@@ -260,6 +264,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     lineHeight: 20,
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end',
+    marginTop: -8,
+    color: COLORS.blueDark,
+    fontSize: 14,
+    fontWeight: '800',
   },
   primaryButton: {
     marginTop: 8,

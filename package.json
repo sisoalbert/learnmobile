@@ -7,6 +7,7 @@
     "@babel/parser": "^7.29.7",
     "@convex-dev/auth": "^0.0.94",
     "@expo/ui": "~57.0.7",
+    "@oslojs/crypto": "^1.0.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-vector-icons/lucide": "^13.1.2",
     "@sentry/react-native": "^8.21.0",
@@ -81,6 +82,10 @@
   "jest": {
     "preset": "jest-expo",
     "watchman": false,
+    "moduleNameMapper": {
+      "^@/assets/(.*)$": "<rootDir>/assets/$1",
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.ts"
     ]
