@@ -44,3 +44,8 @@ example
 
 assets/generated
 .env.local
+.env.production
+
+*.apk
+*.aab
+*.ipa
