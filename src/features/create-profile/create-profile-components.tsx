@@ -202,6 +202,7 @@ type FormFieldProps = {
   autoComplete?: TextInputProps['autoComplete'];
   maxLength?: number;
   secureTextEntry?: boolean;
+  editable?: boolean;
   error?: boolean;
   rightAccessory?: ReactNode;
   testID?: string;
@@ -216,6 +217,7 @@ function FormField({
   autoComplete,
   maxLength,
   secureTextEntry,
+  editable = true,
   error = false,
   rightAccessory,
   testID,
@@ -226,6 +228,7 @@ function FormField({
         accessibilityLabel={placeholder}
         autoCapitalize={autoCapitalize}
         autoComplete={autoComplete}
+        editable={editable}
         keyboardType={keyboardType}
         maxLength={maxLength}
         onChangeText={onChangeText}
@@ -365,11 +368,15 @@ export function PasswordScreen({
   onChangePassword,
   visible,
   onToggleVisibility,
+  errorMessage = '',
+  isSubmitting = false,
 }: {
   password: string;
   onChangePassword: (value: string) => void;
   visible: boolean;
   onToggleVisibility: () => void;
+  errorMessage?: string;
+  isSubmitting?: boolean;
 }) {
   return (
     <FormContent>
@@ -378,6 +385,7 @@ export function PasswordScreen({
         <FormField
           autoCapitalize="none"
           autoComplete="new-password"
+          editable={!isSubmitting}
           onChangeText={onChangePassword}
           placeholder="Password"
           secureTextEntry={!visible}
@@ -396,6 +404,11 @@ export function PasswordScreen({
           }
         />
         <Text selectable style={styles.passwordHint}>Use at least 8 characters.</Text>
+        {errorMessage ? (
+          <Text accessibilityRole="alert" selectable style={styles.errorText}>
+            {errorMessage}
+          </Text>
+        ) : null}
       </View>
     </FormContent>
   );

@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import { useSessionStore } from '@/state/sessionStore';
 
@@ -6,6 +6,15 @@ import CreateProfileFlowScreen from '../create-profile-flow-screen';
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockSignIn = jest.fn();
+
+jest.mock('@convex-dev/auth/react', () => ({
+  useAuthActions: () => ({ signIn: mockSignIn }),
+}));
+
+jest.mock('@sentry/react-native', () => ({
+  captureMessage: jest.fn(),
+}));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
@@ -14,6 +23,7 @@ jest.mock('expo-router', () => ({
 describe('create-profile flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSignIn.mockResolvedValue({ signingIn: true });
     useSessionStore.getState().signOut();
   });
 
@@ -102,7 +112,7 @@ describe('create-profile flow', () => {
     expect(screen.getByRole('button', { name: 'Next' }).props.accessibilityState).toEqual({ disabled: false });
   });
 
-  test('toggles password visibility and completes without authenticating', () => {
+  test('creates a Convex Auth account and stores the authenticated profile', async () => {
     const screen = advanceToPassword();
     const passwordInput = screen.getByTestId('password-input');
 
@@ -117,11 +127,45 @@ describe('create-profile flow', () => {
     expect(screen.getByRole('button', { name: 'Create profile' }).props.accessibilityState).toEqual({ disabled: false });
 
     fireEvent.press(screen.getByRole('button', { name: 'Create profile' }));
-    expect(screen.getByText('Welcome, Sam Lee! Your profile has been successfully created.')).toBeTruthy();
-    expect(useSessionStore.getState().isAuthenticated).toBe(false);
+
+    await waitFor(() => {
+      expect(mockSignIn).toHaveBeenCalledWith('password', {
+        email: 'sam.lee@gmail.com',
+        password: 'password123',
+        flow: 'signUp',
+        name: 'Sam Lee',
+      });
+      expect(screen.getByText('Welcome, Sam Lee! Your profile has been successfully created.')).toBeTruthy();
+    });
+
+    expect(useSessionStore.getState()).toMatchObject({
+      isAuthenticated: true,
+      user: {
+        id: 'sam.lee@gmail.com',
+        email: 'sam.lee@gmail.com',
+        name: 'Sam Lee',
+      },
+    });
 
     fireEvent.press(screen.getByText('Continue'));
     expect(mockReplace).toHaveBeenCalledWith('/home');
+  });
+
+  test('keeps the password step open and shows auth errors', async () => {
+    mockSignIn.mockRejectedValueOnce(new Error('Account already exists'));
+    const screen = advanceToPassword();
+
+    fireEvent.changeText(screen.getByTestId('password-input'), 'password123');
+    fireEvent.press(screen.getByRole('button', { name: 'Create profile' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'An account with this email already exists. Try signing in.',
+      );
+    });
+
+    expect(screen.queryByText('Welcome, Sam Lee! Your profile has been successfully created.')).toBeNull();
+    expect(useSessionStore.getState().isAuthenticated).toBe(false);
   });
 
   test('closes age to home', () => {

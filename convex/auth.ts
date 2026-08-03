@@ -11,7 +11,23 @@ const sendWelcomeEmail = makeFunctionReference<
 >('emails:sendWelcomeEmail');
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [Password({ reset: ResendOTPPasswordReset })],
+  providers: [
+    Password({
+      reset: ResendOTPPasswordReset,
+      profile: (params) => {
+        if (typeof params.email !== 'string') {
+          throw new Error('Missing email');
+        }
+
+        const name = typeof params.name === 'string' ? params.name.trim() : '';
+
+        return {
+          email: params.email.trim().toLowerCase(),
+          ...(name ? { name } : {}),
+        };
+      },
+    }),
+  ],
   callbacks: {
     afterUserCreatedOrUpdated: async (ctx, { existingUserId, profile }) => {
       if (existingUserId !== null || typeof profile.email !== 'string') {

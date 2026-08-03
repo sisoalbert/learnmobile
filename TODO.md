@@ -16,8 +16,8 @@
   - [ ] Widgets step
   - [ ] Plan selection step
   - [ ] Starting level step
-- [ ] Sign Up
-- [ ] Sign In
+- [x] Sign Up
+- [x] Sign In
 - [ ] Course Selection
 - [ ] Placement Test
 - [ ] Daily Goal Setup

@@ -1,3 +1,5 @@
+import { useAuthActions } from '@convex-dev/auth/react';
+import * as Sentry from '@sentry/react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
@@ -15,11 +17,14 @@ import {
   isValidEmail,
   suggestEmail,
 } from '@/features/create-profile/create-profile-validation';
+import { useSessionStore } from '@/state/sessionStore';
 
 type CreateProfileStep = 'prompt' | 'age' | 'name' | 'email' | 'password' | 'success';
 
 export default function CreateProfileFlowScreen() {
   const router = useRouter();
+  const { signIn } = useAuthActions();
+  const setAuthenticatedUser = useSessionStore((state) => state.setAuthenticatedUser);
   const [step, setStep] = useState<CreateProfileStep>('prompt');
   const [age, setAge] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -27,6 +32,8 @@ export default function CreateProfileFlowScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
   const ageValid = isValidAge(age);
@@ -36,6 +43,56 @@ export default function CreateProfileFlowScreen() {
   const passwordValid = password.length >= 8;
   const openTerms = () => router.push('/terms' as never);
   const openPrivacy = () => router.push('/privacy' as never);
+
+  const handleCreateProfile = async () => {
+    if (!emailValid || !passwordValid || isSubmitting) return;
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    setErrorMessage('');
+    setIsSubmitting(true);
+
+    try {
+      const result = await signIn('password', {
+        email: normalizedEmail,
+        password,
+        flow: 'signUp',
+        name: fullName,
+      });
+
+      if (!result.signingIn) {
+        Sentry.captureMessage('Create profile sign up did not complete', {
+          level: 'warning',
+          tags: {
+            area: 'auth',
+            operation: 'create_profile_sign_up',
+          },
+        });
+        setErrorMessage('We could not create your profile. Please try again.');
+        return;
+      }
+
+      setAuthenticatedUser({
+        id: normalizedEmail,
+        email: normalizedEmail,
+        name: fullName,
+      });
+      setStep('success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      Sentry.captureMessage(message, {
+        level: 'warning',
+        tags: {
+          area: 'auth',
+          operation: 'create_profile_sign_up',
+        },
+      });
+      setErrorMessage(getAuthErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (step === 'prompt') {
     return (
@@ -105,7 +162,10 @@ export default function CreateProfileFlowScreen() {
           email={email}
           fullName={fullName}
           invalid={emailInvalid}
-          onChangeEmail={setEmail}
+          onChangeEmail={(value) => {
+            setEmail(value);
+            setErrorMessage('');
+          }}
           onUseSuggestion={() => setEmail(suggestion)}
           suggestion={suggestion}
         />
@@ -119,15 +179,20 @@ export default function CreateProfileFlowScreen() {
         legal={passwordValid}
         navigation="back"
         onNavigationPress={() => setStep('email')}
-        onPrimaryPress={() => setStep('success')}
+        onPrimaryPress={() => void handleCreateProfile()}
         onPrivacyPress={openPrivacy}
         onTermsPress={openTerms}
-        primaryDisabled={!passwordValid}
-        primaryLabel="Create profile"
+        primaryDisabled={!passwordValid || isSubmitting}
+        primaryLabel={isSubmitting ? 'Creating profile…' : 'Create profile'}
         progress={0.9}
       >
         <PasswordScreen
-          onChangePassword={setPassword}
+          errorMessage={errorMessage}
+          isSubmitting={isSubmitting}
+          onChangePassword={(value) => {
+            setPassword(value);
+            setErrorMessage('');
+          }}
           onToggleVisibility={() => setPasswordVisible((visible) => !visible)}
           password={password}
           visible={passwordVisible}
@@ -145,4 +210,14 @@ export default function CreateProfileFlowScreen() {
       <SuccessScreen fullName={fullName} />
     </CreateProfileShell>
   );
+}
+
+function getAuthErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+
+  if (message.toLowerCase().includes('already')) {
+    return 'An account with this email already exists. Try signing in.';
+  }
+
+  return 'Unable to create your profile. Please try again.';
 }
