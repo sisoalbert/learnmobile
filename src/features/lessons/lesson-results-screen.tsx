@@ -1,25 +1,36 @@
 import { Lucide, type LucideIconName } from '@react-native-vector-icons/lucide';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const RESULTS = [
-  { label: 'Total XP', value: '23', icon: 'zap', color: '#D88700', background: '#FFF6DC' },
-  { label: 'Great', value: '93%', detail: 'accuracy', icon: 'target', color: '#2289FD', background: '#EAF4FF' },
-  { label: 'Speedy', value: '2:49', detail: 'completion time', icon: 'timer', color: '#8C5BD6', background: '#F3ECFF' },
-] satisfies {
-  label: string;
-  value: string;
-  detail?: string;
-  icon: LucideIconName;
-  color: string;
-  background: string;
-}[];
+import { formatLessonDuration, useLessonResultsStore } from '@/state/lesson-results-store';
 
 export default function LessonResultsScreen() {
   const router = useRouter();
+  const hasHydrated = useLessonResultsStore((state) => state.hasHydrated);
+  const summary = useLessonResultsStore((state) => state.latestSummary);
+
+  useEffect(() => {
+    if (hasHydrated && !summary) router.replace('/lessons/first' as never);
+  }, [hasHydrated, router, summary]);
+
+  if (!hasHydrated || !summary) return null;
+
+  const results = [
+    { label: 'Total XP', value: summary.earnedXp.toString(), icon: 'zap', color: '#D88700', background: '#FFF6DC' },
+    { label: 'Great', value: `${summary.accuracyPercent}%`, detail: 'accuracy', icon: 'target', color: '#2289FD', background: '#EAF4FF' },
+    { label: 'Speedy', value: formatLessonDuration(summary.durationSeconds), detail: 'completion time', icon: 'timer', color: '#8C5BD6', background: '#F3ECFF' },
+  ] satisfies {
+    label: string;
+    value: string;
+    detail?: string;
+    icon: LucideIconName;
+    color: string;
+    background: string;
+  }[];
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -44,7 +55,7 @@ export default function LessonResultsScreen() {
           </Animated.View>
 
           <View style={styles.results}>
-            {RESULTS.map((result, index) => (
+            {results.map((result, index) => (
               <Animated.View
                 entering={FadeInUp.delay(210 + index * 70).duration(260)}
                 key={result.label}

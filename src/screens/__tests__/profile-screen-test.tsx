@@ -1,7 +1,9 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert, Platform } from 'react-native';
 
+import { useLessonResultsStore } from '@/state/lesson-results-store';
 import { useSessionStore } from '@/state/sessionStore';
+import { useUserProfileStore } from '@/state/user-profile-store';
 
 import ProfileScreen from '../ProfileScreen';
 
@@ -39,6 +41,27 @@ describe('profile account actions', () => {
     mockDeleteCurrentUser.mockResolvedValue({ deleted: true });
     mockSignOutFromConvex.mockResolvedValue(undefined);
     useSessionStore.getState().setAuthenticatedUser({ id: 'user-id' });
+    useUserProfileStore.setState({
+      age: 25,
+      firstName: 'Sam',
+      lastName: 'Lee',
+      email: 'sam@example.com',
+      isAccountCreated: true,
+    });
+    useLessonResultsStore.setState({
+      startedAt: 1_000,
+      currentQuestionIndex: 3,
+      latestSummary: {
+        lessonId: 'first-lesson',
+        score: 8,
+        maximumScore: 8,
+        earnedXp: 85,
+        maximumXp: 85,
+        accuracyPercent: 100,
+        durationSeconds: 120,
+        completedAt: 121_000,
+      },
+    });
   });
 
   afterAll(() => {
@@ -77,6 +100,44 @@ describe('profile account actions', () => {
     expect(screen.getByLabelText('Delete account')).toBeTruthy();
   });
 
+  test('signs out and clears profile data without clearing lesson progress', async () => {
+    const screen = render(<ProfileScreen name="Profile" />);
+
+    fireEvent.press(screen.getByLabelText('Sign out'));
+
+    await waitFor(() => {
+      expect(mockSignOutFromConvex).toHaveBeenCalledTimes(1);
+      expect(useSessionStore.getState().isAuthenticated).toBe(false);
+      expect(useUserProfileStore.getState()).toMatchObject({
+        age: null,
+        firstName: '',
+        lastName: '',
+        email: '',
+        isAccountCreated: false,
+      });
+      expect(useLessonResultsStore.getState().latestSummary?.earnedXp).toBe(85);
+      expect(mockReplace).toHaveBeenCalledWith('/signin');
+    });
+  });
+
+  test('keeps local profile and lesson data when sign out fails', async () => {
+    const error = new Error('offline');
+    mockSignOutFromConvex.mockRejectedValueOnce(error);
+    const screen = render(<ProfileScreen name="Profile" />);
+
+    fireEvent.press(screen.getByLabelText('Sign out'));
+
+    await waitFor(() => {
+      expect(mockCaptureException).toHaveBeenCalledWith(error, {
+        tags: { area: 'auth', operation: 'sign_out' },
+      });
+      expect(useSessionStore.getState().isAuthenticated).toBe(true);
+      expect(useUserProfileStore.getState().email).toBe('sam@example.com');
+      expect(useLessonResultsStore.getState().latestSummary?.earnedXp).toBe(85);
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+  });
+
   test('asks for confirmation before deleting', () => {
     const screen = render(<ProfileScreen name="Profile" />);
 
@@ -103,6 +164,8 @@ describe('profile account actions', () => {
       expect(mockDeleteCurrentUser).toHaveBeenCalledWith({});
       expect(mockSignOutFromConvex).toHaveBeenCalledTimes(1);
       expect(useSessionStore.getState().isAuthenticated).toBe(false);
+      expect(useUserProfileStore.getState().email).toBe('');
+      expect(useLessonResultsStore.getState().latestSummary).toBeNull();
       expect(mockReplace).toHaveBeenCalledWith('/signin');
     });
   });
@@ -127,6 +190,26 @@ describe('profile account actions', () => {
     } finally {
       browser.restore();
     }
+  });
+
+  test('clears local data when account deletion succeeds but Convex sign out fails', async () => {
+    const error = new Error('session already removed');
+    mockSignOutFromConvex.mockRejectedValueOnce(error);
+    const screen = render(<ProfileScreen name="Profile" />);
+
+    fireEvent.press(screen.getByLabelText('Delete account'));
+    confirmAccountDeletion();
+
+    await waitFor(() => {
+      expect(mockDeleteCurrentUser).toHaveBeenCalledWith({});
+      expect(mockCaptureException).toHaveBeenCalledWith(error, {
+        tags: { area: 'auth', operation: 'sign_out_after_delete' },
+      });
+      expect(useSessionStore.getState().isAuthenticated).toBe(false);
+      expect(useUserProfileStore.getState().email).toBe('');
+      expect(useLessonResultsStore.getState().latestSummary).toBeNull();
+      expect(mockReplace).toHaveBeenCalledWith('/signin');
+    });
   });
 
   test('keeps the account when browser confirmation is cancelled', () => {
@@ -161,6 +244,8 @@ describe('profile account actions', () => {
         'Please check your connection and try again.',
       );
       expect(useSessionStore.getState().isAuthenticated).toBe(true);
+      expect(useUserProfileStore.getState().email).toBe('sam@example.com');
+      expect(useLessonResultsStore.getState().latestSummary?.earnedXp).toBe(85);
       expect(mockReplace).not.toHaveBeenCalled();
     });
   });

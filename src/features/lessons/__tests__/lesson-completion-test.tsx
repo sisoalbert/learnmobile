@@ -2,6 +2,7 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 
 import LessonCompleteScreen, { CELEBRATION_DURATION_MS } from '../lesson-complete-screen';
 import LessonResultsScreen from '../lesson-results-screen';
+import { useLessonResultsStore } from '@/state/lesson-results-store';
 
 const mockReplace = jest.fn();
 
@@ -12,6 +13,19 @@ jest.mock('expo-router', () => ({
 describe('lesson completion flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useLessonResultsStore.setState({
+      hasHydrated: true,
+      latestSummary: {
+        lessonId: 'first-lesson',
+        score: 13,
+        maximumScore: 14,
+        earnedXp: 23,
+        maximumXp: 85,
+        accuracyPercent: 93,
+        durationSeconds: 169,
+        completedAt: 1_000,
+      },
+    });
   });
 
   test('moves from the celebration to results automatically', () => {

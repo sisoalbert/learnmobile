@@ -26,7 +26,6 @@ const firstLessonQuestionIds = [
   'beginner-c1-l1-mc-001',
   'beginner-c1-l1-ms-001',
   'beginner-c1-l2-fb-001',
-  'beginner-c1-l2-ao-001',
   'beginner-c1-l3-tf-001',
   'beginner-c1-l3-ic-001',
   'beginner-c2-l1-mp-001',

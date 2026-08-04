@@ -5,6 +5,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import type { StreakGoal } from '@/state/learning-goal-store';
+
+export type { StreakGoal } from '@/state/learning-goal-store';
+
 const COLORS = {
   blue: '#2289FD',
   blueDark: '#1A6ECE',
@@ -18,8 +22,6 @@ const COLORS = {
   orange: '#F59E0B',
   orangeSoft: '#FFF3D6',
 };
-
-export type StreakGoal = 3 | 5 | 7;
 
 type LearningGoalShellProps = PropsWithChildren<{
   primaryLabel: string;

@@ -1,5 +1,5 @@
 import { ConvexAuthProvider, useConvexAuth } from '@convex-dev/auth/react';
-import { ConvexReactClient } from 'convex/react';
+import { ConvexReactClient, useQuery } from 'convex/react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -7,6 +7,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { authTokenStorage } from '@/auth/token-storage';
 import { useSessionStore } from '@/state/sessionStore';
+import { useUserProfileStore } from '@/state/user-profile-store';
+import { api } from '../../convex/_generated/api';
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
@@ -56,12 +58,34 @@ export default Sentry.wrap(RootLayout);
 function AuthenticatedAppNavigator() {
   const { isAuthenticated: convexAuthenticated, isLoading } = useConvexAuth();
   const setAuthenticatedUser = useSessionStore((state) => state.setAuthenticatedUser);
+  const hydrateProfile = useUserProfileStore((state) => state.hydrateProfile);
+  const currentUser = useQuery(
+    api.users.current,
+    !isLoading && convexAuthenticated ? {} : 'skip',
+  );
 
   useEffect(() => {
-    if (!isLoading && convexAuthenticated) {
+    if (isLoading || !convexAuthenticated) return;
+
+    if (currentUser) {
+      setAuthenticatedUser({
+        id: currentUser.id,
+        email: currentUser.email,
+        name: currentUser.name,
+        age: currentUser.age,
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName,
+      });
+      hydrateProfile({
+        age: currentUser.age ?? null,
+        firstName: currentUser.firstName ?? '',
+        lastName: currentUser.lastName ?? '',
+        email: currentUser.email ?? '',
+      });
+    } else {
       setAuthenticatedUser({ id: 'convex-auth-user' });
     }
-  }, [convexAuthenticated, isLoading, setAuthenticatedUser]);
+  }, [convexAuthenticated, currentUser, hydrateProfile, isLoading, setAuthenticatedUser]);
 
   return <AppNavigator />;
 }

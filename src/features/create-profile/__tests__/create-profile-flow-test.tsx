@@ -1,6 +1,7 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import { useSessionStore } from '@/state/sessionStore';
+import { useUserProfileStore } from '@/state/user-profile-store';
 
 import CreateProfileFlowScreen from '../create-profile-flow-screen';
 
@@ -25,6 +26,7 @@ describe('create-profile flow', () => {
     jest.clearAllMocks();
     mockSignIn.mockResolvedValue({ signingIn: true });
     useSessionStore.getState().signOut();
+    useUserProfileStore.getState().resetProfile();
   });
 
   function advanceToAge() {
@@ -134,6 +136,9 @@ describe('create-profile flow', () => {
         password: 'password123',
         flow: 'signUp',
         name: 'Sam Lee',
+        age: 25,
+        firstName: 'Sam',
+        lastName: 'Lee',
       });
       expect(screen.getByText('Welcome, Sam Lee! Your profile has been successfully created.')).toBeTruthy();
     });
@@ -146,6 +151,14 @@ describe('create-profile flow', () => {
         name: 'Sam Lee',
       },
     });
+    expect(useUserProfileStore.getState()).toMatchObject({
+      age: 25,
+      firstName: 'Sam',
+      lastName: 'Lee',
+      email: 'sam.lee@gmail.com',
+      isAccountCreated: true,
+    });
+    expect(useUserProfileStore.getState()).not.toHaveProperty('password');
 
     fireEvent.press(screen.getByText('Continue'));
     expect(mockReplace).toHaveBeenCalledWith('/home');
@@ -166,6 +179,7 @@ describe('create-profile flow', () => {
 
     expect(screen.queryByText('Welcome, Sam Lee! Your profile has been successfully created.')).toBeNull();
     expect(useSessionStore.getState().isAuthenticated).toBe(false);
+    expect(useUserProfileStore.getState().isAccountCreated).toBe(false);
   });
 
   test('closes age to home', () => {

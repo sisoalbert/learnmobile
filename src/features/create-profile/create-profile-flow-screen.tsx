@@ -18,6 +18,7 @@ import {
   suggestEmail,
 } from '@/features/create-profile/create-profile-validation';
 import { useSessionStore } from '@/state/sessionStore';
+import { getProfileFullName, useUserProfileStore } from '@/state/user-profile-store';
 
 type CreateProfileStep = 'prompt' | 'age' | 'name' | 'email' | 'password' | 'success';
 
@@ -26,17 +27,23 @@ export default function CreateProfileFlowScreen() {
   const { signIn } = useAuthActions();
   const setAuthenticatedUser = useSessionStore((state) => state.setAuthenticatedUser);
   const [step, setStep] = useState<CreateProfileStep>('prompt');
-  const [age, setAge] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const age = useUserProfileStore((state) => state.age);
+  const firstName = useUserProfileStore((state) => state.firstName);
+  const lastName = useUserProfileStore((state) => state.lastName);
+  const email = useUserProfileStore((state) => state.email);
+  const setAge = useUserProfileStore((state) => state.setAge);
+  const setFirstName = useUserProfileStore((state) => state.setFirstName);
+  const setLastName = useUserProfileStore((state) => state.setLastName);
+  const setEmail = useUserProfileStore((state) => state.setEmail);
+  const markAccountCreated = useUserProfileStore((state) => state.markAccountCreated);
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-  const ageValid = isValidAge(age);
+  const ageText = age?.toString() ?? '';
+  const fullName = getProfileFullName({ firstName, lastName });
+  const ageValid = isValidAge(ageText);
   const nameValid = firstName.trim().length > 0 && lastName.trim().length > 0;
   const emailValid = isValidEmail(email);
   const emailInvalid = email.trim().length > 0 && !emailValid;
@@ -45,9 +52,11 @@ export default function CreateProfileFlowScreen() {
   const openPrivacy = () => router.push('/privacy' as never);
 
   const handleCreateProfile = async () => {
-    if (!emailValid || !passwordValid || isSubmitting) return;
+    if (!ageValid || !nameValid || !emailValid || !passwordValid || isSubmitting) return;
 
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedFirstName = firstName.trim();
+    const normalizedLastName = lastName.trim();
 
     setErrorMessage('');
     setIsSubmitting(true);
@@ -58,6 +67,9 @@ export default function CreateProfileFlowScreen() {
         password,
         flow: 'signUp',
         name: fullName,
+        age,
+        firstName: normalizedFirstName,
+        lastName: normalizedLastName,
       });
 
       if (!result.signingIn) {
@@ -76,7 +88,12 @@ export default function CreateProfileFlowScreen() {
         id: normalizedEmail,
         email: normalizedEmail,
         name: fullName,
+        age: age ?? undefined,
+        firstName: normalizedFirstName,
+        lastName: normalizedLastName,
       });
+      setEmail(normalizedEmail);
+      markAccountCreated();
       setStep('success');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -121,7 +138,7 @@ export default function CreateProfileFlowScreen() {
         primaryLabel="Next"
         progress={0.2}
       >
-        <AgeScreen age={age} onChangeAge={setAge} valid={ageValid} />
+        <AgeScreen age={ageText} onChangeAge={setAge} valid={ageValid} />
       </CreateProfileShell>
     );
   }

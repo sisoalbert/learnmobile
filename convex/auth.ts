@@ -20,10 +20,20 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         }
 
         const name = typeof params.name === 'string' ? params.name.trim() : '';
+        const firstName = typeof params.firstName === 'string' ? params.firstName.trim() : '';
+        const lastName = typeof params.lastName === 'string' ? params.lastName.trim() : '';
+        const age = typeof params.age === 'number' ? params.age : null;
+
+        if (age !== null && (!Number.isInteger(age) || age < 1 || age > 120)) {
+          throw new Error('Invalid age');
+        }
 
         return {
           email: params.email.trim().toLowerCase(),
           ...(name ? { name } : {}),
+          ...(firstName ? { firstName } : {}),
+          ...(lastName ? { lastName } : {}),
+          ...(age !== null ? { age } : {}),
         };
       },
     }),

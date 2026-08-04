@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 
 import LearningGoalFlowScreen from '../learning-goal-flow-screen';
+import { useLearningGoalStore } from '@/state/learning-goal-store';
 
 const mockReplace = jest.fn();
 
@@ -11,6 +12,7 @@ jest.mock('expo-router', () => ({
 describe('post-lesson learning goal flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useLearningGoalStore.getState().resetGoal();
   });
 
   function advanceToGoalSelection() {
@@ -69,5 +71,9 @@ describe('post-lesson learning goal flow', () => {
     fireEvent.press(screen.getByText('Commit to my goal'));
 
     expect(mockReplace).toHaveBeenCalledWith('/create-profile');
+    expect(useLearningGoalStore.getState()).toMatchObject({
+      selectedStreakGoal: 5,
+      isCommitted: true,
+    });
   });
 });

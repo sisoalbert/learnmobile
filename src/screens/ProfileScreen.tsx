@@ -7,7 +7,9 @@ import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
+import { useLessonResultsStore } from '@/state/lesson-results-store';
 import { useSessionStore } from '@/state/sessionStore';
+import { useUserProfileStore } from '@/state/user-profile-store';
 import { api } from '../../convex/_generated/api';
 
 const DELETE_ACCOUNT_TITLE = 'Delete account?';
@@ -25,6 +27,8 @@ export default function ProfileScreen({
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
   const user = useSessionStore((state) => state.user);
   const clearLocalSession = useSessionStore((state) => state.signOut);
+  const resetProfile = useUserProfileStore((state) => state.resetProfile);
+  const resetLesson = useLessonResultsStore((state) => state.resetLesson);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const currentUser = useQuery(api.users.current, isAuthenticated ? {} : 'skip');
@@ -41,6 +45,7 @@ export default function ProfileScreen({
 
     try {
       await signOutFromConvex();
+      resetProfile();
       clearLocalSession();
       router.replace('/signin');
     } catch (error) {
@@ -62,9 +67,6 @@ export default function ProfileScreen({
 
     try {
       await deleteCurrentUser({});
-      await signOutFromConvex();
-      clearLocalSession();
-      router.replace('/signin');
     } catch (error) {
       Sentry.captureException(error, {
         tags: {
@@ -74,7 +76,24 @@ export default function ProfileScreen({
       });
       Alert.alert('Unable to delete account', 'Please check your connection and try again.');
       setIsDeletingAccount(false);
+      return;
     }
+
+    try {
+      await signOutFromConvex();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          area: 'auth',
+          operation: 'sign_out_after_delete',
+        },
+      });
+    }
+
+    resetProfile();
+    resetLesson();
+    clearLocalSession();
+    router.replace('/signin');
   };
 
   const handleDeleteAccount = () => {

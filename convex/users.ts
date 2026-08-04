@@ -18,8 +18,12 @@ export const current = query({
     }
 
     return {
+      id: user._id,
       email: user.email,
       name: user.name,
+      age: user.age,
+      firstName: user.firstName,
+      lastName: user.lastName,
     };
   },
 });

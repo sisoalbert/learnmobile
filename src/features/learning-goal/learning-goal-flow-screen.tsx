@@ -7,15 +7,17 @@ import {
   LearningGoalShell,
   StreakConfirmationStep,
   StreakGoalSelectionStep,
-  type StreakGoal,
 } from '@/features/learning-goal/learning-goal-components';
+import { useLearningGoalStore } from '@/state/learning-goal-store';
 
 type FlowStep = 'habit' | 'practice' | 'confirmation' | 'goal' | 'goal-selected';
 
 export default function LearningGoalFlowScreen() {
   const router = useRouter();
   const [step, setStep] = useState<FlowStep>('habit');
-  const [selectedGoal, setSelectedGoal] = useState<StreakGoal | null>(null);
+  const selectedGoal = useLearningGoalStore((state) => state.selectedStreakGoal);
+  const selectStreakGoal = useLearningGoalStore((state) => state.selectStreakGoal);
+  const commitGoal = useLearningGoalStore((state) => state.commitGoal);
 
   if (step === 'habit') {
     return (
@@ -46,12 +48,15 @@ export default function LearningGoalFlowScreen() {
       <LearningGoalShell
         primaryDisabled={selectedGoal === null}
         primaryLabel="Commit to my goal"
-        onPrimaryPress={() => router.replace('/create-profile' as never)}
+        onPrimaryPress={() => {
+          commitGoal();
+          router.replace('/create-profile' as never);
+        }}
       >
         <StreakGoalSelectionStep
           selectedGoal={selectedGoal}
           onSelectGoal={(goal) => {
-            setSelectedGoal(goal);
+            selectStreakGoal(goal);
             setStep('goal-selected');
           }}
         />
