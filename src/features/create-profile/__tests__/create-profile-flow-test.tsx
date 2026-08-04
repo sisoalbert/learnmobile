@@ -1,6 +1,8 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import { useSessionStore } from '@/state/sessionStore';
+import { useLearningGoalStore } from '@/state/learning-goal-store';
+import { useOnboardingStore } from '@/state/onboarding-store';
 import { useUserProfileStore } from '@/state/user-profile-store';
 
 import CreateProfileFlowScreen from '../create-profile-flow-screen';
@@ -27,6 +29,20 @@ describe('create-profile flow', () => {
     mockSignIn.mockResolvedValue({ signingIn: true });
     useSessionStore.getState().signOut();
     useUserProfileStore.getState().resetProfile();
+    useLearningGoalStore.getState().resetGoal();
+    useOnboardingStore.getState().resetOnboarding();
+    useOnboardingStore.setState({
+      isCompleted: true,
+      learningGoal: 'expo-fundamentals',
+      experienceLevel: 'javascript-typescript',
+      expoExperience: 'tried-expo-go',
+      motivations: ['own-app', 'career'],
+      dailyGoalMinutes: 10,
+      reminderPreference: 'enabled',
+      learningPlan: 'guided',
+      startingPoint: 'scratch',
+    });
+    useLearningGoalStore.setState({ selectedStreakGoal: 5, isCommitted: true });
   });
 
   function advanceToAge() {
@@ -139,6 +155,18 @@ describe('create-profile flow', () => {
         age: 25,
         firstName: 'Sam',
         lastName: 'Lee',
+        onboarding: {
+          completed: true,
+          learningGoal: 'expo-fundamentals',
+          experienceLevel: 'javascript-typescript',
+          expoExperience: 'tried-expo-go',
+          motivations: ['own-app', 'career'],
+          dailyGoalMinutes: 10,
+          reminderPreference: 'enabled',
+          learningPlan: 'guided',
+          startingPoint: 'scratch',
+          streakGoal: 5,
+        },
       });
       expect(screen.getByText('Welcome, Sam Lee! Your profile has been successfully created.')).toBeTruthy();
     });

@@ -24,6 +24,7 @@ export const current = query({
       age: user.age,
       firstName: user.firstName,
       lastName: user.lastName,
+      onboarding: user.onboarding,
     };
   },
 });

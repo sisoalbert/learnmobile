@@ -17,6 +17,8 @@ import {
   isValidEmail,
   suggestEmail,
 } from '@/features/create-profile/create-profile-validation';
+import { useLearningGoalStore } from '@/state/learning-goal-store';
+import { useOnboardingStore } from '@/state/onboarding-store';
 import { useSessionStore } from '@/state/sessionStore';
 import { getProfileFullName, useUserProfileStore } from '@/state/user-profile-store';
 
@@ -57,6 +59,7 @@ export default function CreateProfileFlowScreen() {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedFirstName = firstName.trim();
     const normalizedLastName = lastName.trim();
+    const onboarding = getLocalOnboardingAnswers();
 
     setErrorMessage('');
     setIsSubmitting(true);
@@ -70,6 +73,7 @@ export default function CreateProfileFlowScreen() {
         age,
         firstName: normalizedFirstName,
         lastName: normalizedLastName,
+        onboarding,
       });
 
       if (!result.signingIn) {
@@ -227,6 +231,24 @@ export default function CreateProfileFlowScreen() {
       <SuccessScreen fullName={fullName} />
     </CreateProfileShell>
   );
+}
+
+export function getLocalOnboardingAnswers() {
+  const onboarding = useOnboardingStore.getState();
+  const streakGoal = useLearningGoalStore.getState().selectedStreakGoal;
+
+  return {
+    completed: onboarding.isCompleted,
+    motivations: [...onboarding.motivations],
+    ...(onboarding.learningGoal !== null ? { learningGoal: onboarding.learningGoal } : {}),
+    ...(onboarding.experienceLevel !== null ? { experienceLevel: onboarding.experienceLevel } : {}),
+    ...(onboarding.expoExperience !== null ? { expoExperience: onboarding.expoExperience } : {}),
+    ...(onboarding.dailyGoalMinutes !== null ? { dailyGoalMinutes: onboarding.dailyGoalMinutes } : {}),
+    ...(onboarding.reminderPreference !== null ? { reminderPreference: onboarding.reminderPreference } : {}),
+    ...(onboarding.learningPlan !== null ? { learningPlan: onboarding.learningPlan } : {}),
+    ...(onboarding.startingPoint !== null ? { startingPoint: onboarding.startingPoint } : {}),
+    ...(streakGoal !== null ? { streakGoal } : {}),
+  };
 }
 
 function getAuthErrorMessage(error: unknown) {

@@ -2,6 +2,8 @@ import { authTables } from '@convex-dev/auth/server';
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
+import { userOnboardingValidator } from './onboarding';
+
 export default defineSchema({
   ...authTables,
   users: defineTable({
@@ -15,6 +17,7 @@ export default defineSchema({
     age: v.optional(v.number()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
+    onboarding: v.optional(userOnboardingValidator),
   })
     .index('email', ['email'])
     .index('phone', ['phone']),

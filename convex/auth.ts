@@ -3,6 +3,7 @@ import { convexAuth } from '@convex-dev/auth/server';
 import { makeFunctionReference } from 'convex/server';
 
 import { ResendOTPPasswordReset } from './passwordReset';
+import { buildUserOnboarding } from './onboarding';
 
 const sendWelcomeEmail = makeFunctionReference<
   'action',
@@ -23,6 +24,9 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         const firstName = typeof params.firstName === 'string' ? params.firstName.trim() : '';
         const lastName = typeof params.lastName === 'string' ? params.lastName.trim() : '';
         const age = typeof params.age === 'number' ? params.age : null;
+        const onboarding = params.flow === 'signUp'
+          ? buildUserOnboarding(params.onboarding)
+          : undefined;
 
         if (age !== null && (!Number.isInteger(age) || age < 1 || age > 120)) {
           throw new Error('Invalid age');
@@ -34,6 +38,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           ...(firstName ? { firstName } : {}),
           ...(lastName ? { lastName } : {}),
           ...(age !== null ? { age } : {}),
+          ...(onboarding ? { onboarding } : {}),
         };
       },
     }),

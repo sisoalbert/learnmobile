@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
+import type * as onboarding from "../onboarding.js";
 import type * as passwordReset from "../passwordReset.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
@@ -25,6 +26,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   emails: typeof emails;
   http: typeof http;
+  onboarding: typeof onboarding;
   passwordReset: typeof passwordReset;
   tasks: typeof tasks;
   users: typeof users;
