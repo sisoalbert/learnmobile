@@ -20,6 +20,7 @@ export type QuestionTypeScreenProps = {
   sequence?: { index: number; total: number };
   onAnswerChange?: (answer: QuestionAnswer) => void;
   onResult?: (result: LocalQuestionResult) => void;
+  onSubmitAnswer?: (answer: QuestionAnswer) => Promise<LocalQuestionResult>;
   onContinue?: (result: LocalQuestionResult) => void;
   onBack?: () => void;
   customValidators?: CustomValidatorRegistry;
@@ -38,6 +39,7 @@ function QuestionTypeScreenContent({
   sequence,
   onAnswerChange,
   onResult,
+  onSubmitAnswer,
   onContinue,
   onBack,
   customValidators = {},
@@ -46,6 +48,8 @@ function QuestionTypeScreenContent({
   const [result, setResult] = useState<LocalQuestionResult>();
   const [visibleHintIds, setVisibleHintIds] = useState<string[]>([]);
   const [attempts, setAttempts] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState('');
   const meta = QUESTION_TYPE_META[question.type];
   const invalidInitialAnswer = !answerMatchesQuestion(question, initialAnswer);
 
@@ -53,16 +57,27 @@ function QuestionTypeScreenContent({
     setAnswer(next);
     onAnswerChange?.(next);
   };
-  const check = () => {
-    if (!answer || !isAnswerComplete(question, answer)) return;
-    const nextResult = gradeQuestion(question, answer, customValidators);
-    setResult(nextResult);
-    setAttempts((value) => value + 1);
-    onResult?.(nextResult);
+  const check = async () => {
+    if (!answer || !isAnswerComplete(question, answer) || isSubmitting) return;
+    setSubmissionError('');
+    setIsSubmitting(true);
+    try {
+      const nextResult = onSubmitAnswer
+        ? await onSubmitAnswer(answer)
+        : gradeQuestion(question, answer, customValidators);
+      setResult(nextResult);
+      setAttempts((value) => value + 1);
+      onResult?.(nextResult);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : 'Unable to check this answer.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   const retry = () => {
     setAnswer(undefined);
     setResult(undefined);
+    setSubmissionError('');
   };
   const showHint = () => {
     const nextHint = question.hints?.find((hint) => !visibleHintIds.includes(hint.id));
@@ -141,6 +156,7 @@ function QuestionTypeScreenContent({
               {question.explanation ? <View style={styles.explanation}><Text selectable style={styles.explanationTitle}>Why?</Text><Text selectable style={styles.explanationText}>{question.explanation.summary}</Text>{question.explanation.details ? <Text selectable style={styles.explanationText}>{question.explanation.details}</Text> : null}</View> : null}
             </View>
           ) : null}
+          {submissionError ? <Text accessibilityRole="alert" selectable style={styles.submissionError}>{submissionError}</Text> : null}
           <View style={styles.bottomSpacer} />
         </ScrollView>
 
@@ -149,7 +165,7 @@ function QuestionTypeScreenContent({
             result.status === 'correct'
               ? <PrimaryButton label="Continue" onPress={() => onContinue?.(result)} />
               : <PrimaryButton label="Try again" onPress={retry} color={feedbackColor} />
-          ) : <PrimaryButton label="Check answer" disabled={!complete} onPress={check} />}
+          ) : <PrimaryButton label={isSubmitting ? 'Checking…' : 'Check answer'} disabled={!complete || isSubmitting} onPress={() => void check()} />}
         </View>
       </View>
     </SafeAreaView>
@@ -193,6 +209,7 @@ const styles = StyleSheet.create({
   feedbackTitle: { fontSize: 19, fontWeight: '800' },
   feedbackScore: { color: QUESTION_COLORS.muted, fontSize: 13, fontVariant: ['tabular-nums'] },
   validationError: { color: QUESTION_COLORS.red, fontFamily: 'monospace', fontSize: 12 },
+  submissionError: { color: QUESTION_COLORS.red, fontSize: 13, fontWeight: '700', textAlign: 'center' },
   explanation: { gap: 5, paddingTop: 2 },
   explanationTitle: { color: QUESTION_COLORS.ink, fontSize: 13, fontWeight: '800' },
   explanationText: { color: QUESTION_COLORS.muted, fontSize: 13, lineHeight: 19 },

@@ -9,8 +9,12 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as content from "../content.js";
+import type * as contentSeed from "../contentSeed.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
+import type * as learning from "../learning.js";
+import type * as learningValidators from "../learningValidators.js";
 import type * as onboarding from "../onboarding.js";
 import type * as passwordReset from "../passwordReset.js";
 import type * as tasks from "../tasks.js";
@@ -24,8 +28,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  content: typeof content;
+  contentSeed: typeof contentSeed;
   emails: typeof emails;
   http: typeof http;
+  learning: typeof learning;
+  learningValidators: typeof learningValidators;
   onboarding: typeof onboarding;
   passwordReset: typeof passwordReset;
   tasks: typeof tasks;

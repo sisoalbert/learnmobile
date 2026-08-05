@@ -10,9 +10,15 @@ import CreateProfileFlowScreen from '../create-profile-flow-screen';
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockSignIn = jest.fn();
+const mockNormalizeCurrentProfile = jest.fn();
 
 jest.mock('@convex-dev/auth/react', () => ({
   useAuthActions: () => ({ signIn: mockSignIn }),
+}));
+
+jest.mock('convex/react', () => ({
+  useConvexAuth: () => ({ isAuthenticated: true, isLoading: false }),
+  useMutation: () => mockNormalizeCurrentProfile,
 }));
 
 jest.mock('@sentry/react-native', () => ({
@@ -27,6 +33,7 @@ describe('create-profile flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSignIn.mockResolvedValue({ signingIn: true });
+    mockNormalizeCurrentProfile.mockResolvedValue({ username: 'sam' });
     useSessionStore.getState().signOut();
     useUserProfileStore.getState().resetProfile();
     useLearningGoalStore.getState().resetGoal();
@@ -169,6 +176,11 @@ describe('create-profile flow', () => {
         },
       });
       expect(screen.getByText('Welcome, Sam Lee! Your profile has been successfully created.')).toBeTruthy();
+      expect(mockNormalizeCurrentProfile).toHaveBeenCalledWith({
+        age: 25,
+        firstName: 'Sam',
+        lastName: 'Lee',
+      });
     });
 
     expect(useSessionStore.getState()).toMatchObject({
@@ -193,7 +205,9 @@ describe('create-profile flow', () => {
   });
 
   test('keeps the password step open and shows auth errors', async () => {
-    mockSignIn.mockRejectedValueOnce(new Error('Account already exists'));
+    mockSignIn
+      .mockRejectedValueOnce(new Error('Account already exists'))
+      .mockRejectedValueOnce(new Error('Invalid credentials'));
     const screen = advanceToPassword();
 
     fireEvent.changeText(screen.getByTestId('password-input'), 'password123');
@@ -208,6 +222,30 @@ describe('create-profile flow', () => {
     expect(screen.queryByText('Welcome, Sam Lee! Your profile has been successfully created.')).toBeNull();
     expect(useSessionStore.getState().isAuthenticated).toBe(false);
     expect(useUserProfileStore.getState().isAccountCreated).toBe(false);
+  });
+
+  test('signs into and normalizes an existing account when the password matches', async () => {
+    mockSignIn
+      .mockRejectedValueOnce(new Error('Account already exists'))
+      .mockResolvedValueOnce({ signingIn: true });
+    const screen = advanceToPassword();
+
+    fireEvent.changeText(screen.getByTestId('password-input'), 'password123');
+    fireEvent.press(screen.getByRole('button', { name: 'Create profile' }));
+
+    await waitFor(() => {
+      expect(mockSignIn).toHaveBeenNthCalledWith(2, 'password', {
+        email: 'sam.lee@gmail.com',
+        password: 'password123',
+        flow: 'signIn',
+      });
+      expect(mockNormalizeCurrentProfile).toHaveBeenCalledWith({
+        age: 25,
+        firstName: 'Sam',
+        lastName: 'Lee',
+      });
+      expect(screen.getByText('Welcome, Sam Lee! Your profile has been successfully created.')).toBeTruthy();
+    });
   });
 
   test('closes age to home', () => {

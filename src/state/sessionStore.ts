@@ -7,6 +7,8 @@ export type SessionUser = {
   age?: number;
   firstName?: string;
   lastName?: string;
+  username?: string;
+  plan?: 'free' | 'premium';
 };
 
 type SessionState = {

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { LocalQuestionResult, Question } from '@/features/questions/questions.types';
+import type { Id } from '../../convex/_generated/dataModel';
 
 export const FIRST_LESSON_ID = 'first-lesson';
 
@@ -18,6 +19,7 @@ export type LessonQuestionProgress = {
 };
 
 export type LessonSummary = {
+  attemptId?: Id<'lessonAttempts'>;
   lessonId: string;
   score: number;
   maximumScore: number;
@@ -26,6 +28,35 @@ export type LessonSummary = {
   accuracyPercent: number;
   durationSeconds: number;
   completedAt: number;
+  heartsRemaining?: number;
+  totalXp?: number;
+  streakDays?: number;
+  completedLessons?: number;
+  nextLessonKey?: string | null;
+  weeklyActivityDateKeys?: string[];
+  monthlyQuest?: {
+    monthKey: string;
+    questPoints: number;
+    questTarget: number;
+    lessonsCompleted: number;
+    lessonsTarget: number;
+    highAccuracyLessons: number;
+    highAccuracyTarget: number;
+    streakExtensions: number;
+    streakTarget: number;
+  };
+  reward?: {
+    questPointsEarned: number;
+    gemsAvailable: number;
+    claimed: boolean;
+    totalGems: number;
+  };
+};
+
+export type ClaimedLessonReward = {
+  gemsEarned: number;
+  totalGems: number;
+  alreadyClaimed: boolean;
 };
 
 export type LessonResultsState = {
@@ -36,10 +67,14 @@ export type LessonResultsState = {
   completedAt: number | null;
   questionResults: Record<string, LessonQuestionProgress>;
   latestSummary: LessonSummary | null;
+  claimedReward: ClaimedLessonReward | null;
   startLesson: (startedAt?: number) => void;
+  startBackendLesson: (lessonId: string, startedAt?: number) => void;
   recordResult: (question: Question, result: LocalQuestionResult, checkedAt?: number) => void;
   advanceQuestion: (nextQuestionIndex: number) => void;
   completeLesson: (questions: Question[], completedAt?: number) => LessonSummary;
+  setServerSummary: (summary: LessonSummary) => void;
+  setClaimedReward: (reward: ClaimedLessonReward) => void;
   resetLesson: () => void;
   setHasHydrated: (value: boolean) => void;
 };
@@ -66,6 +101,7 @@ export const useLessonResultsStore = create<LessonResultsState>()(
       ...initialAttempt,
       hasHydrated: false,
       latestSummary: null,
+      claimedReward: null,
       startLesson: (startedAt = Date.now()) => {
         const state = get();
 
@@ -75,6 +111,18 @@ export const useLessonResultsStore = create<LessonResultsState>()(
           ...initialAttempt,
           startedAt,
           latestSummary: state.latestSummary,
+          claimedReward: null,
+        });
+      },
+      startBackendLesson: (lessonId, startedAt = Date.now()) => {
+        const state = get();
+        if (state.lessonId === lessonId && state.startedAt !== null && state.completedAt === null) return;
+        set({
+          ...initialAttempt,
+          lessonId,
+          startedAt,
+          latestSummary: state.latestSummary,
+          claimedReward: null,
         });
       },
       recordResult: (question, result, checkedAt = Date.now()) =>
@@ -132,7 +180,14 @@ export const useLessonResultsStore = create<LessonResultsState>()(
         set({ completedAt, latestSummary: summary });
         return summary;
       },
-      resetLesson: () => set({ ...initialAttempt, latestSummary: null }),
+      setServerSummary: (summary) => set({
+        lessonId: summary.lessonId,
+        completedAt: summary.completedAt,
+        latestSummary: summary,
+        claimedReward: null,
+      }),
+      setClaimedReward: (claimedReward) => set({ claimedReward }),
+      resetLesson: () => set({ ...initialAttempt, latestSummary: null, claimedReward: null }),
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),
     }),
     {
@@ -146,6 +201,7 @@ export const useLessonResultsStore = create<LessonResultsState>()(
         completedAt: state.completedAt,
         questionResults: state.questionResults,
         latestSummary: state.latestSummary,
+        claimedReward: state.claimedReward,
       }),
       onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
     },

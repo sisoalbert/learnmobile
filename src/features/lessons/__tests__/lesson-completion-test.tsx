@@ -3,6 +3,9 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import LessonCompleteScreen, { CELEBRATION_DURATION_MS } from '../lesson-complete-screen';
 import LessonResultsScreen from '../lesson-results-screen';
 import { useLessonResultsStore } from '@/state/lesson-results-store';
+import { useLearningGoalStore } from '@/state/learning-goal-store';
+import { useOnboardingStore } from '@/state/onboarding-store';
+import { useSessionStore } from '@/state/sessionStore';
 
 const mockReplace = jest.fn();
 
@@ -26,6 +29,9 @@ describe('lesson completion flow', () => {
         completedAt: 1_000,
       },
     });
+    useOnboardingStore.setState({ hasHydrated: true, isCompleted: false });
+    useLearningGoalStore.setState({ hasHydrated: true, isCommitted: false, selectedStreakGoal: null });
+    useSessionStore.getState().signOut();
   });
 
   test('moves from the celebration to results automatically', () => {
@@ -42,7 +48,7 @@ describe('lesson completion flow', () => {
     jest.useRealTimers();
   });
 
-  test('continues from the results screen to the learning goal flow', () => {
+  test('keeps first-time learners in the learning goal flow', () => {
     const screen = render(<LessonResultsScreen />);
 
     expect(screen.getByText('Learning legend!')).toBeTruthy();
@@ -50,8 +56,29 @@ describe('lesson completion flow', () => {
     expect(screen.getByText('93%')).toBeTruthy();
     expect(screen.getByText('2:49')).toBeTruthy();
 
-    fireEvent.press(screen.getByText('Continue'));
+    fireEvent.press(screen.getByText('Claim XP'));
 
     expect(mockReplace).toHaveBeenCalledWith('/learning-goal');
+  });
+
+  test('sends returning free learners into the ad flow', () => {
+    useOnboardingStore.setState({ isCompleted: true });
+    useLearningGoalStore.setState({ isCommitted: true, selectedStreakGoal: 5 });
+    const screen = render(<LessonResultsScreen />);
+
+    fireEvent.press(screen.getByText('Claim XP'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/lessons/ad');
+  });
+
+  test('lets returning premium learners skip monetization placeholders', () => {
+    useOnboardingStore.setState({ isCompleted: true });
+    useLearningGoalStore.setState({ isCommitted: true, selectedStreakGoal: 5 });
+    useSessionStore.getState().setAuthenticatedUser({ id: 'premium-user', plan: 'premium' });
+    const screen = render(<LessonResultsScreen />);
+
+    fireEvent.press(screen.getByText('Claim XP'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/lessons/streak-increase');
   });
 });

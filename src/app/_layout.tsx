@@ -1,5 +1,5 @@
 import { ConvexAuthProvider, useConvexAuth } from '@convex-dev/auth/react';
-import { ConvexReactClient, useQuery } from 'convex/react';
+import { ConvexReactClient, useAction, useMutation, useQuery } from 'convex/react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -7,6 +7,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { authTokenStorage } from '@/auth/token-storage';
 import { useSessionStore } from '@/state/sessionStore';
+import { useLearnerSessionStore } from '@/state/learner-session-store';
+import { useLearningGoalStore } from '@/state/learning-goal-store';
+import { useOnboardingStore } from '@/state/onboarding-store';
 import { useUserProfileStore } from '@/state/user-profile-store';
 import { api } from '../../convex/_generated/api';
 import * as Sentry from '@sentry/react-native';
@@ -58,14 +61,23 @@ export default Sentry.wrap(RootLayout);
 function AuthenticatedAppNavigator() {
   const { isAuthenticated: convexAuthenticated, isLoading } = useConvexAuth();
   const setAuthenticatedUser = useSessionStore((state) => state.setAuthenticatedUser);
+  const clearLocalSession = useSessionStore((state) => state.signOut);
   const hydrateProfile = useUserProfileStore((state) => state.hydrateProfile);
+  const hydrateCommittedGoal = useLearningGoalStore((state) => state.hydrateCommittedGoal);
+  const markOnboardingCompleted = useOnboardingStore((state) => state.markCompletedFromAccount);
   const currentUser = useQuery(
     api.users.current,
     !isLoading && convexAuthenticated ? {} : 'skip',
   );
 
+  useLearningBootstrap({ authenticated: convexAuthenticated, loading: isLoading });
+
   useEffect(() => {
-    if (isLoading || !convexAuthenticated) return;
+    if (isLoading) return;
+    if (!convexAuthenticated) {
+      clearLocalSession();
+      return;
+    }
 
     if (currentUser) {
       setAuthenticatedUser({
@@ -75,6 +87,8 @@ function AuthenticatedAppNavigator() {
         age: currentUser.age,
         firstName: currentUser.firstName,
         lastName: currentUser.lastName,
+        username: currentUser.username,
+        plan: currentUser.plan,
       });
       hydrateProfile({
         age: currentUser.age ?? null,
@@ -82,12 +96,51 @@ function AuthenticatedAppNavigator() {
         lastName: currentUser.lastName ?? '',
         email: currentUser.email ?? '',
       });
+      if (currentUser.onboarding?.completed) markOnboardingCompleted();
+      if (currentUser.onboarding?.streakGoal) {
+        hydrateCommittedGoal(currentUser.onboarding.streakGoal);
+      }
     } else {
       setAuthenticatedUser({ id: 'convex-auth-user' });
     }
-  }, [convexAuthenticated, currentUser, hydrateProfile, isLoading, setAuthenticatedUser]);
+  }, [clearLocalSession, convexAuthenticated, currentUser, hydrateCommittedGoal, hydrateProfile, isLoading, markOnboardingCompleted, setAuthenticatedUser]);
 
   return <AppNavigator />;
+}
+
+function useLearningBootstrap({ authenticated, loading }: { authenticated: boolean; loading: boolean }) {
+  const hasHydrated = useLearnerSessionStore((state) => state.hasHydrated);
+  const learnerSession = useLearnerSessionStore((state) => state.session);
+  const setLearnerSession = useLearnerSessionStore((state) => state.setSession);
+  const clearLearnerSession = useLearnerSessionStore((state) => state.clearSession);
+  const courses = useQuery(api.content.listPublishedCourses);
+  const ensureSeeded = useMutation(api.content.ensureSeeded);
+  const createGuestSession = useAction(api.learning.createGuestSession);
+  const mergeGuestProgress = useMutation(api.learning.mergeGuestProgress);
+
+  useEffect(() => {
+    if (courses?.length === 0) void ensureSeeded({});
+  }, [courses, ensureSeeded]);
+
+  useEffect(() => {
+    if (!hasHydrated || loading || authenticated || learnerSession) return;
+    let active = true;
+    void createGuestSession({}).then((created) => {
+      if (active) setLearnerSession(created);
+    });
+    return () => { active = false; };
+  }, [authenticated, createGuestSession, hasHydrated, learnerSession, loading, setLearnerSession]);
+
+  useEffect(() => {
+    if (!authenticated || !learnerSession) return;
+    let active = true;
+    void mergeGuestProgress(learnerSession).then(() => {
+      if (active) clearLearnerSession();
+    }).catch((error) => {
+      Sentry.captureException(error, { tags: { area: 'learning', operation: 'merge_guest_progress' } });
+    });
+    return () => { active = false; };
+  }, [authenticated, clearLearnerSession, learnerSession, mergeGuestProgress]);
 }
 
 function AppNavigator() {
@@ -108,6 +161,7 @@ function AppNavigator() {
         <Stack.Screen name="home" />
         <Stack.Screen name="todo" />
         <Stack.Screen name="learning-paths" />
+        <Stack.Screen name="courses/[courseKey]" />
         <Stack.Screen name="profile" />
         <Stack.Screen name="question-types" />
 

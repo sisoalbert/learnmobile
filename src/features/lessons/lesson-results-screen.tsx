@@ -7,17 +7,34 @@ import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatLessonDuration, useLessonResultsStore } from '@/state/lesson-results-store';
+import { useLearningGoalStore } from '@/state/learning-goal-store';
+import { useOnboardingStore } from '@/state/onboarding-store';
+import { useSessionStore } from '@/state/sessionStore';
 
 export default function LessonResultsScreen() {
   const router = useRouter();
   const hasHydrated = useLessonResultsStore((state) => state.hasHydrated);
   const summary = useLessonResultsStore((state) => state.latestSummary);
+  const onboardingHydrated = useOnboardingStore((state) => state.hasHydrated);
+  const onboardingCompleted = useOnboardingStore((state) => state.isCompleted);
+  const goalHydrated = useLearningGoalStore((state) => state.hasHydrated);
+  const goalCommitted = useLearningGoalStore((state) => state.isCommitted);
+  const plan = useSessionStore((state) => state.user?.plan ?? 'free');
 
   useEffect(() => {
     if (hasHydrated && !summary) router.replace('/lessons/first' as never);
   }, [hasHydrated, router, summary]);
 
   if (!hasHydrated || !summary) return null;
+  const setupReady = onboardingHydrated && goalHydrated;
+
+  const continueAfterResults = () => {
+    if (!onboardingCompleted || !goalCommitted) {
+      router.replace('/learning-goal' as never);
+      return;
+    }
+    router.replace((plan === 'premium' ? '/lessons/streak-increase' : '/lessons/ad') as never);
+  };
 
   const results = [
     { label: 'Total XP', value: summary.earnedXp.toString(), icon: 'zap', color: '#D88700', background: '#FFF6DC' },
@@ -51,7 +68,7 @@ export default function LessonResultsScreen() {
 
           <Animated.View entering={FadeInUp.delay(120).duration(260)} style={styles.copy}>
             <Text selectable style={styles.title}>Learning legend!</Text>
-            <Text selectable style={styles.subtitle}>You just completed your first lesson!</Text>
+            <Text selectable style={styles.subtitle}>Your XP and rewards are ready to claim.</Text>
           </Animated.View>
 
           <View style={styles.results}>
@@ -76,10 +93,12 @@ export default function LessonResultsScreen() {
 
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.replace('/learning-goal' as never)}
-          style={({ pressed }) => [styles.homeButton, pressed && styles.homeButtonPressed]}
+          accessibilityState={{ disabled: !setupReady }}
+          disabled={!setupReady}
+          onPress={continueAfterResults}
+          style={({ pressed }) => [styles.homeButton, !setupReady && styles.homeButtonDisabled, pressed && setupReady && styles.homeButtonPressed]}
         >
-          <Text selectable style={styles.homeButtonText}>Continue</Text>
+          <Text selectable style={styles.homeButtonText}>{setupReady ? 'Claim XP' : 'Loading…'}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -146,5 +165,6 @@ const styles = StyleSheet.create({
     boxShadow: '0 4px 0 #1A6ECE',
   },
   homeButtonPressed: { opacity: 0.88, transform: [{ translateY: 2 }] },
+  homeButtonDisabled: { opacity: 0.55 },
   homeButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900', letterSpacing: 0.4 },
 });

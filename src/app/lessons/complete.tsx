@@ -1,5 +1,5 @@
-import { LessonCompleteScreen } from '@/features/lessons';
+import { Redirect } from 'expo-router';
 
 export default function LessonCompleteRoute() {
-  return <LessonCompleteScreen />;
+  return <Redirect href="/lessons/results" />;
 }

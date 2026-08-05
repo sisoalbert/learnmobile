@@ -79,7 +79,7 @@
 - [ ] `expo-iap`
 
 ## Analytics and Error Reporting
-- [ ] `@sentry/react-native`
+- [x] `@sentry/react-native`
 
 ## Testing
 - [ ] `jest`

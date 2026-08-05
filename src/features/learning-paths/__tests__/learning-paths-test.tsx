@@ -6,6 +6,14 @@ import HomeScreen from '@/screens/HomeScreen';
 import { ComingSoonPathScreen } from '../coming-soon-path-screen';
 import { LEARNING_PATHS_BY_LEVEL, isLearningPathLevel } from '../learning-paths';
 
+jest.mock('convex/react', () => ({
+  useConvexAuth: () => ({ isAuthenticated: false, isLoading: false }),
+  useQuery: (_reference: unknown, args?: unknown) => args === 'skip' ? undefined : [
+    { id: 'course-1', key: 'beginner-course-1', title: 'Getting Started', description: 'Start', subject: 'Expo', lessonCount: 3, exerciseCount: 6 },
+    { id: 'course-5', key: 'beginner-course-5', title: 'Navigation Basics', description: 'Navigate', subject: 'Expo Router', lessonCount: 3, exerciseCount: 6 },
+  ],
+}));
+
 describe('learning path MVP', () => {
   test('ships Beginner and keeps the later paths locked', () => {
     expect(LEARNING_PATHS_BY_LEVEL.beginner).toMatchObject({ status: 'available', progress: 0.12 });
@@ -22,7 +30,7 @@ describe('learning path MVP', () => {
     expect(screen.getByText('Learning Paths')).toBeTruthy();
     expect(screen.getByText('Getting Started')).toBeTruthy();
     expect(screen.getByText('Navigation Basics')).toBeTruthy();
-    expect(screen.getByText('12%')).toBeTruthy();
+    expect(screen.getByText('Syncing your progress…')).toBeTruthy();
     expect(screen.getAllByText('COMING SOON')).toHaveLength(2);
   });
 

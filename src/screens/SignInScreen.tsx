@@ -173,12 +173,6 @@ export default function SignInScreen() {
             </Text>
           </Pressable>
 
-          <View style={styles.alternateAction}>
-            <Text selectable style={styles.alternateText}>New to Learn Expo?</Text>
-            <Link href="/signup" replace style={styles.alternateLink}>
-              Create an account
-            </Link>
-          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -297,22 +291,5 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.3,
     textTransform: 'uppercase',
-  },
-  alternateAction: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    marginTop: 8,
-  },
-  alternateText: {
-    color: '#737D91',
-    fontSize: 15,
-  },
-  alternateLink: {
-    color: COLORS.blueDark,
-    fontSize: 15,
-    fontWeight: '800',
   },
 });

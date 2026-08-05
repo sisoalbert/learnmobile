@@ -72,6 +72,9 @@ describe('forgot password flow', () => {
     expect(screen.getByLabelText('Link to /forgot-password')).toHaveTextContent(
       'Forgot password?',
     );
+    expect(screen.queryByText('New to Learn Expo?')).toBeNull();
+    expect(screen.queryByText('Create an account')).toBeNull();
+    expect(screen.queryByLabelText('Link to /signup')).toBeNull();
   });
 
   test('normalizes the email and requests a reset code', async () => {

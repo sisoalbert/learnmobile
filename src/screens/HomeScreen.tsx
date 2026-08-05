@@ -1,7 +1,8 @@
 import { Lucide } from '@react-native-vector-icons/lucide';
+import { useConvexAuth, useQuery } from 'convex/react';
 import { Link } from 'expo-router';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -10,13 +11,31 @@ import {
   type ComingSoonLearningPath,
 } from '@/features/learning-paths';
 import { useSessionStore } from '@/state/sessionStore';
+import { useLearnerSessionStore } from '@/state/learner-session-store';
+import { api } from '../../convex/_generated/api';
 
 export default function HomeScreen() {
-  const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
+  const { isAuthenticated: convexAuthenticated, isLoading: authLoading } = useConvexAuth();
   const user = useSessionStore((state) => state.user);
+  const learner = useLearnerSessionStore((state) => state.session);
   const beginnerPath = LEARNING_PATHS.find((path): path is AvailableLearningPath => path.status === 'available');
+  const courses = useQuery(api.content.listPublishedCourses);
+  const authenticatedProgress = useQuery(api.learning.getAuthenticatedProgress, convexAuthenticated ? {} : 'skip');
+  const guestProgress = useQuery(api.learning.getGuestProgress, !convexAuthenticated && learner ? learner : 'skip');
+  const learning = convexAuthenticated ? authenticatedProgress : guestProgress;
   const lockedPaths = LEARNING_PATHS.filter((path): path is ComingSoonLearningPath => path.status === 'coming_soon');
   const greeting = user?.name ? `Welcome back, ${user.name}` : 'Welcome to Learn Expo';
+
+  if (authLoading) {
+    return (
+      <SafeAreaView style={styles.loadingState} edges={['top', 'bottom']}>
+        <ActivityIndicator color="#2289FD" size="large" />
+        <Text accessibilityLiveRegion="polite" selectable style={styles.syncingText}>
+          Restoring your learning plan…
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -27,14 +46,20 @@ export default function HomeScreen() {
       >
         <View style={styles.header}>
           <View style={styles.headerCopy}>
-            <Text selectable style={styles.eyebrow}>{isAuthenticated ? 'YOUR LEARNING PLAN' : 'GUEST LEARNING PLAN'}</Text>
+            <Text selectable style={styles.eyebrow}>{convexAuthenticated ? 'YOUR LEARNING PLAN' : 'GUEST LEARNING PLAN'}</Text>
             <Text selectable style={styles.welcome}>{greeting}</Text>
           </View>
-          <Link href="/profile" asChild>
-            <Pressable accessibilityLabel="View profile" accessibilityRole="link" style={({ pressed }) => [styles.profileButton, pressed && styles.pressed]}>
-              <Lucide name="user" size={22} color="#1E73D1" />
-            </Pressable>
-          </Link>
+          <View style={styles.headerActions}>
+            <View accessibilityLabel={`${learning?.gems ?? 0} gems`} style={styles.gemPill}>
+              <Lucide name="gem" size={17} color="#16889A" />
+              <Text selectable style={styles.gemText}>{learning?.gems ?? 0}</Text>
+            </View>
+            <Link href="/profile" asChild>
+              <Pressable accessibilityLabel="View profile" accessibilityRole="link" style={({ pressed }) => [styles.profileButton, pressed && styles.pressed]}>
+                <Lucide name="user" size={22} color="#1E73D1" />
+              </Pressable>
+            </Link>
+          </View>
         </View>
 
         <View style={styles.intro}>
@@ -42,7 +67,9 @@ export default function HomeScreen() {
           <Text selectable style={styles.subtitle}>Master the foundations first. New paths will unlock as Learn Expo grows.</Text>
         </View>
 
-        {beginnerPath ? <AvailablePathCard path={beginnerPath} /> : null}
+        {courses === undefined && beginnerPath
+          ? <AvailablePathCard path={beginnerPath} />
+          : <LearningOverview courses={courses ?? []} learning={learning} />}
 
         <View style={styles.roadmapHeading}>
           <Text selectable style={styles.roadmapTitle}>On the roadmap</Text>
@@ -78,6 +105,74 @@ export default function HomeScreen() {
         */}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function LearningOverview({
+  courses,
+  learning,
+}: {
+  courses: {
+    id: string;
+    key: string;
+    title: string;
+    description: string;
+    subject: string;
+    lessonCount: number;
+    exerciseCount: number;
+  }[];
+  learning?: {
+    progress: {
+      courseId: string;
+      courseKey: string | null;
+      currentLessonKey: string | null;
+      totalXp: number;
+      hearts: number;
+      completedLessons: number;
+    }[];
+    streakDays: number;
+    gems: number;
+  };
+}) {
+  const totalXp = learning?.progress.reduce((total, item) => total + item.totalXp, 0) ?? 0;
+  const hearts = learning?.progress[0]?.hearts ?? 5;
+  const completedLessons = learning?.progress.reduce((total, item) => total + item.completedLessons, 0) ?? 0;
+
+  return (
+    <View style={styles.learningOverview}>
+      {learning === undefined ? (
+        <Text accessibilityLiveRegion="polite" selectable style={styles.syncingText}>
+          Syncing your progress…
+        </Text>
+      ) : (
+        <View style={styles.statusRow}>
+          <PathStat value={String(totalXp)} label="total XP" />
+          <PathStat value={String(hearts)} label="hearts" />
+          <PathStat value={String(learning.streakDays)} label="day streak" />
+          <PathStat value={String(completedLessons)} label="completed" />
+        </View>
+      )}
+      <View style={styles.publishedCourses}>
+        {courses.map((course, index) => {
+          const progress = learning?.progress.find((item) => item.courseKey === course.key);
+          const available = index === 0 || completedLessons > 0;
+          return (
+            <Link key={course.key} href={{ pathname: '/courses/[courseKey]', params: { courseKey: course.key } }} asChild>
+              <Pressable accessibilityRole="link" style={({ pressed }) => [styles.publishedCourse, pressed && styles.pressed]}>
+                <View style={[styles.courseNumber, available && styles.activeCourseNumber]}>
+                  <Text selectable style={[styles.courseNumberText, available && styles.activeCourseNumberText]}>{index + 1}</Text>
+                </View>
+                <View style={styles.practiceCopy}>
+                  <Text selectable style={styles.publishedCourseTitle}>{course.title}</Text>
+                  <Text selectable style={styles.practiceText}>{course.lessonCount} lessons · {course.exerciseCount} exercises · {progress?.totalXp ?? 0} XP</Text>
+                </View>
+                <Lucide name={progress?.currentLessonKey ? 'play' : 'chevron-right'} size={19} color="#2289FD" />
+              </Pressable>
+            </Link>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
@@ -181,9 +276,13 @@ function PathStat({ value, label }: { value: string; label: string }) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F7F9FC' },
+  loadingState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, backgroundColor: '#F7F9FC' },
   content: { width: '100%', maxWidth: 760, alignSelf: 'center', gap: 22, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 36 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   headerCopy: { flex: 1, gap: 3 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  gemPill: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: '#E8FBFD' },
+  gemText: { color: '#167786', fontSize: 14, fontWeight: '900', fontVariant: ['tabular-nums'] },
   eyebrow: { color: '#1E73D1', fontSize: 11, fontWeight: '900', letterSpacing: 0.9 },
   welcome: { color: '#667085', fontSize: 15, fontWeight: '600' },
   profileButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: '#EAF4FF' },
@@ -232,6 +331,14 @@ const styles = StyleSheet.create({
   lockedGoal: { color: '#697386', fontSize: 13.5, lineHeight: 19 },
   topicPreview: { color: '#9A9FAE', fontSize: 11.5, fontWeight: '600' },
   lockedAction: { alignItems: 'center', gap: 9 },
+  learningOverview: { gap: 14, padding: 18, borderWidth: 2, borderColor: '#27A844', borderRadius: 24, backgroundColor: '#FFFFFF', boxShadow: '0 10px 30px rgba(23, 33, 59, 0.08)' },
+  statusRow: { flexDirection: 'row', gap: 8 },
+  syncingText: { color: '#667085', fontSize: 15, fontWeight: '700', paddingVertical: 12 },
+  publishedCourses: { gap: 8 },
+  publishedCourse: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12, borderWidth: 1, borderColor: '#E4E7EC', borderRadius: 15, backgroundColor: '#FFFFFF' },
+  publishedCourseTitle: { color: '#27324B', fontSize: 14, fontWeight: '800' },
+  activeCourseNumber: { backgroundColor: '#EAF8EE' },
+  activeCourseNumberText: { color: '#27A844' },
   practiceLink: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderWidth: 1, borderColor: '#DCE6F3', borderRadius: 18, borderCurve: 'continuous', backgroundColor: '#F1F7FE' },
   todoLink: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderWidth: 1, borderColor: '#D8EBDD', borderRadius: 18, borderCurve: 'continuous', backgroundColor: '#F0FAF3' },
   practiceCopy: { flex: 1, gap: 2 },

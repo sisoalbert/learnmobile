@@ -37,6 +37,8 @@ export default function ProfileScreen({
 
   const accountDescription =
     currentUser?.email ?? user?.email ?? currentUser?.name ?? user?.name ?? 'Signed in';
+  const username = currentUser?.username ?? user?.username;
+  const plan = currentUser?.plan ?? user?.plan ?? 'free';
 
   const handleSignOut = async () => {
     if (isAccountActionPending) return;
@@ -131,6 +133,11 @@ export default function ProfileScreen({
           <Text selectable style={styles.description}>
             {isAuthenticated ? accountDescription : 'not signed in'}
           </Text>
+          {isAuthenticated && username ? (
+            <Text selectable style={styles.identityDetail}>
+              @{username} · {plan} plan
+            </Text>
+          ) : null}
         </View>
 
         {isAuthenticated ? (
@@ -220,6 +227,11 @@ const styles = StyleSheet.create({
   description: {
     color: '#000000',
     fontSize: 16,
+  },
+  identityDetail: {
+    color: '#666666',
+    fontSize: 14,
+    textTransform: 'lowercase',
   },
   actionButton: {
     minHeight: 44,

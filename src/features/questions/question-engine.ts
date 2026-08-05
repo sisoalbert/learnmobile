@@ -3,7 +3,7 @@ import {
   renderTreesEqual,
   validateChallengeRequirements,
   validateRenderRules,
-} from './code-preview';
+} from './code-preview-core';
 import type {
   CodeRange,
   CustomValidatorRegistry,

@@ -5,6 +5,11 @@ import { makeFunctionReference } from 'convex/server';
 import { ResendOTPPasswordReset } from './passwordReset';
 import { buildUserOnboarding } from './onboarding';
 
+const usernameFromProfile = (email: string, firstName: string) => {
+  const source = firstName || email.split('@')[0] || 'learner';
+  return source.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24) || 'learner';
+};
+
 const sendWelcomeEmail = makeFunctionReference<
   'action',
   { email: string },
@@ -27,6 +32,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         const onboarding = params.flow === 'signUp'
           ? buildUserOnboarding(params.onboarding)
           : undefined;
+        const username = usernameFromProfile(params.email, firstName);
 
         if (age !== null && (!Number.isInteger(age) || age < 1 || age > 120)) {
           throw new Error('Invalid age');
@@ -39,15 +45,40 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           ...(lastName ? { lastName } : {}),
           ...(age !== null ? { age } : {}),
           ...(onboarding ? { onboarding } : {}),
+          ...(params.flow === 'signUp' ? {
+            username,
+            normalizedUsername: username,
+            plan: 'free' as const,
+            createdAt: Date.now(),
+            lastActiveAt: Date.now(),
+          } : {}),
         };
       },
     }),
   ],
   callbacks: {
-    afterUserCreatedOrUpdated: async (ctx, { existingUserId, profile }) => {
-      if (existingUserId !== null || typeof profile.email !== 'string') {
-        return;
+    afterUserCreatedOrUpdated: async (ctx, { userId, existingUserId, profile }) => {
+      const user = await ctx.db.get(userId);
+      if (user) {
+        const base = user.normalizedUsername
+          ?? usernameFromProfile(user.email ?? 'learner@example.com', user.firstName ?? '');
+        const collisions = await ctx.db
+          .query('users')
+          .filter((q) => q.eq(q.field('normalizedUsername'), base))
+          .collect();
+        const normalizedUsername = collisions.some((candidate) => candidate._id !== userId)
+          ? `${base}_${String(userId).slice(-5).toLowerCase()}`
+          : base;
+        await ctx.db.patch(userId, {
+          username: normalizedUsername,
+          normalizedUsername,
+          plan: user.plan ?? 'free',
+          createdAt: user.createdAt ?? user._creationTime,
+          lastActiveAt: Date.now(),
+        });
       }
+
+      if (existingUserId !== null || typeof profile.email !== 'string') return;
 
       await ctx.scheduler.runAfter(0, sendWelcomeEmail, {
         email: profile.email,

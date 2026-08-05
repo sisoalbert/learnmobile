@@ -10,6 +10,7 @@ export type LearningGoalState = {
   isCommitted: boolean;
   selectStreakGoal: (goal: StreakGoal) => void;
   commitGoal: () => void;
+  hydrateCommittedGoal: (goal: StreakGoal) => void;
   resetGoal: () => void;
   setHasHydrated: (value: boolean) => void;
 };
@@ -24,6 +25,7 @@ export const useLearningGoalStore = create<LearningGoalState>()(
       commitGoal: () => {
         if (get().selectedStreakGoal !== null) set({ isCommitted: true });
       },
+      hydrateCommittedGoal: (selectedStreakGoal) => set({ selectedStreakGoal, isCommitted: true }),
       resetGoal: () => set({ selectedStreakGoal: null, isCommitted: false }),
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),
     }),
