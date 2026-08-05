@@ -7,9 +7,11 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useLearnerRewardsStore } from '@/state/learner-rewards-store';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
-import { useLessonResultsStore, type LessonSummary } from '@/state/lesson-results-store';
+import { useLessonResultsStore } from '@/state/lesson-results-store';
 import { api } from '../../../convex/_generated/api';
+import { buildUtcWeekDays } from './utc-week';
 
 export const STREAK_INTRO_DURATION_MS = 1800;
 
@@ -182,7 +184,12 @@ export function PostLessonStreakIncreaseScreen() {
 export function PostLessonStreakDetailsScreen() {
   const router = useRouter();
   const summary = usePostLessonSummary();
-  const days = useMemo(() => summary ? weekDays(summary) : [], [summary]);
+  const days = useMemo(
+    () => summary
+      ? buildUtcWeekDays(summary.completedAt, summary.weeklyActivityDateKeys ?? [])
+      : [],
+    [summary],
+  );
   if (!summary) return null;
   const streakDays = summary.streakDays ?? 0;
 
@@ -208,19 +215,6 @@ export function PostLessonStreakDetailsScreen() {
   );
 }
 
-function weekDays(summary: LessonSummary) {
-  const completed = new Set(summary.weeklyActivityDateKeys ?? []);
-  const current = new Date(summary.completedAt);
-  const mondayOffset = (current.getUTCDay() + 6) % 7;
-  const monday = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate() - mondayOffset));
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(monday);
-    date.setUTCDate(monday.getUTCDate() + index);
-    const dateKey = date.toISOString().slice(0, 10);
-    return { dateKey, label: date.toLocaleDateString(undefined, { weekday: 'long', timeZone: 'UTC' }), completed: completed.has(dateKey) };
-  });
-}
-
 export function PostLessonMonthlyQuestScreen() {
   const router = useRouter();
   const summary = usePostLessonSummary();
@@ -230,6 +224,7 @@ export function PostLessonMonthlyQuestScreen() {
   const claimAuthenticated = useMutation(api.learning.claimAuthenticatedLessonReward);
   const claimGuest = useMutation(api.learning.claimGuestLessonReward);
   const setClaimedReward = useLessonResultsStore((state) => state.setClaimedReward);
+  const setGemBalance = useLearnerRewardsStore((state) => state.setGemBalance);
   const [isClaiming, setIsClaiming] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -255,6 +250,7 @@ export function PostLessonMonthlyQuestScreen() {
       const result = isAuthenticated
         ? await claimAuthenticated({ attemptId: summary.attemptId! })
         : await claimGuest({ ...learner!, attemptId: summary.attemptId! });
+      setGemBalance(result.totalGems);
       setClaimedReward(result);
       router.replace('/lessons/reward');
     } catch {
@@ -307,16 +303,22 @@ export function PostLessonRewardScreen() {
   const summary = usePostLessonSummary();
   const claimedReward = useLessonResultsStore((state) => state.claimedReward);
   const resetLesson = useLessonResultsStore((state) => state.resetLesson);
+  const gemBalance = useLearnerRewardsStore((state) => state.gems);
+  const setGemBalance = useLearnerRewardsStore((state) => state.setGemBalance);
 
   useEffect(() => {
     if (summary && !claimedReward) router.replace('/lessons/monthly-quest');
   }, [claimedReward, router, summary]);
 
+  useEffect(() => {
+    if (claimedReward) setGemBalance(claimedReward.totalGems);
+  }, [claimedReward, setGemBalance]);
+
   if (!summary || !claimedReward) return null;
 
   return (
     <PostLessonShell
-      eyebrow={`${claimedReward.totalGems} GEMS TOTAL`}
+      eyebrow={`${Math.max(gemBalance, claimedReward.totalGems)} GEMS TOTAL`}
       title={`+${claimedReward.gemsEarned} gems`}
       subtitle="Your chest is open and the gems are safely stored in your learner balance."
       primaryLabel="Continue"
@@ -327,7 +329,7 @@ export function PostLessonRewardScreen() {
     >
       <View style={styles.gemReward}>
         <Lucide name="gem" size={62} color="#2AB7CA" />
-        <Text selectable style={styles.gemBalance}>Balance: {claimedReward.totalGems}</Text>
+        <Text selectable style={styles.gemBalance}>Balance: {Math.max(gemBalance, claimedReward.totalGems)}</Text>
       </View>
     </PostLessonShell>
   );

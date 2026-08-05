@@ -1,6 +1,7 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import { useLearnerSessionStore } from '@/state/learner-session-store';
+import { useLearnerRewardsStore } from '@/state/learner-rewards-store';
 import { useLessonResultsStore, type LessonSummary } from '@/state/lesson-results-store';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import {
@@ -69,6 +70,7 @@ describe('returning learner post-lesson flow', () => {
       latestSummary: summary,
       claimedReward: null,
     });
+    useLearnerRewardsStore.getState().resetRewards();
   });
 
   test('moves through ad and premium placeholders', () => {
@@ -118,11 +120,30 @@ describe('returning learner post-lesson flow', () => {
         totalGems: 20,
         alreadyClaimed: false,
       });
+      expect(useLearnerRewardsStore.getState().gems).toBe(20);
       expect(mockReplace).toHaveBeenCalledWith('/lessons/reward');
     });
   });
 
+  test('keeps an idempotent claim at the server-returned balance', async () => {
+    useLearnerRewardsStore.getState().setGemBalance(20);
+    mockClaimReward.mockResolvedValueOnce({
+      gemsEarned: 12,
+      totalGems: 20,
+      alreadyClaimed: true,
+    });
+    const screen = render(<PostLessonMonthlyQuestScreen />);
+
+    fireEvent.press(screen.getByText('Open Chest'));
+
+    await waitFor(() => {
+      expect(useLearnerRewardsStore.getState().gems).toBe(20);
+      expect(useLessonResultsStore.getState().claimedReward?.alreadyClaimed).toBe(true);
+    });
+  });
+
   test('keeps a failed chest claim available for retry', async () => {
+    useLearnerRewardsStore.getState().setGemBalance(8);
     mockClaimReward.mockRejectedValueOnce(new Error('offline'));
     const screen = render(<PostLessonMonthlyQuestScreen />);
 
@@ -133,6 +154,7 @@ describe('returning learner post-lesson flow', () => {
         'Unable to open your chest. Your reward is safe—please try again.',
       );
       expect(screen.getByText('Open Chest')).toBeTruthy();
+      expect(useLearnerRewardsStore.getState().gems).toBe(8);
     });
   });
 
@@ -144,6 +166,7 @@ describe('returning learner post-lesson flow', () => {
 
     expect(screen.getByText('+12 gems')).toBeTruthy();
     expect(screen.getByText('Balance: 20')).toBeTruthy();
+    expect(useLearnerRewardsStore.getState().gems).toBe(20);
     fireEvent.press(screen.getByText('Continue'));
 
     expect(useLessonResultsStore.getState().latestSummary).toBeNull();

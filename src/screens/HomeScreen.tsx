@@ -1,7 +1,7 @@
 import { Lucide } from '@react-native-vector-icons/lucide';
 import { useConvexAuth, useQuery } from 'convex/react';
 import { Link } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +11,7 @@ import {
   type ComingSoonLearningPath,
 } from '@/features/learning-paths';
 import { useSessionStore } from '@/state/sessionStore';
+import { useLearnerRewardsStore } from '@/state/learner-rewards-store';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
 import { api } from '../../convex/_generated/api';
 
@@ -23,8 +24,17 @@ export default function HomeScreen() {
   const authenticatedProgress = useQuery(api.learning.getAuthenticatedProgress, convexAuthenticated ? {} : 'skip');
   const guestProgress = useQuery(api.learning.getGuestProgress, !convexAuthenticated && learner ? learner : 'skip');
   const learning = convexAuthenticated ? authenticatedProgress : guestProgress;
+  const cachedGems = useLearnerRewardsStore((state) => state.gems);
+  const setGemBalance = useLearnerRewardsStore((state) => state.setGemBalance);
+  const authoritativeGems = learning?.gems;
   const lockedPaths = LEARNING_PATHS.filter((path): path is ComingSoonLearningPath => path.status === 'coming_soon');
   const greeting = user?.name ? `Welcome back, ${user.name}` : 'Welcome to Learn Expo';
+
+  useEffect(() => {
+    if (authoritativeGems !== undefined) setGemBalance(authoritativeGems);
+  }, [authoritativeGems, setGemBalance]);
+
+  const displayedGems = authoritativeGems ?? cachedGems;
 
   if (authLoading) {
     return (
@@ -50,9 +60,9 @@ export default function HomeScreen() {
             <Text selectable style={styles.welcome}>{greeting}</Text>
           </View>
           <View style={styles.headerActions}>
-            <View accessibilityLabel={`${learning?.gems ?? 0} gems`} style={styles.gemPill}>
+            <View accessibilityLabel={`${displayedGems} gems`} style={styles.gemPill}>
               <Lucide name="gem" size={17} color="#16889A" />
-              <Text selectable style={styles.gemText}>{learning?.gems ?? 0}</Text>
+              <Text selectable style={styles.gemText}>{displayedGems}</Text>
             </View>
             <Link href="/profile" asChild>
               <Pressable accessibilityLabel="View profile" accessibilityRole="link" style={({ pressed }) => [styles.profileButton, pressed && styles.pressed]}>

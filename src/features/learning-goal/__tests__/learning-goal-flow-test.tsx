@@ -1,7 +1,8 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import LearningGoalFlowScreen from '../learning-goal-flow-screen';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
+import { useLessonResultsStore } from '@/state/lesson-results-store';
 
 const mockReplace = jest.fn();
 
@@ -13,6 +14,21 @@ describe('post-lesson learning goal flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useLearningGoalStore.getState().resetGoal();
+    useLessonResultsStore.setState({
+      hasHydrated: true,
+      latestSummary: {
+        lessonId: 'beginner-course-1-lesson-1',
+        score: 4,
+        maximumScore: 4,
+        earnedXp: 20,
+        maximumXp: 20,
+        accuracyPercent: 100,
+        durationSeconds: 42,
+        completedAt: Date.parse('2026-08-05T12:00:00Z'),
+        streakDays: 1,
+        weeklyActivityDateKeys: ['2026-08-05'],
+      },
+    });
   });
 
   function advanceToGoalSelection() {
@@ -36,8 +52,9 @@ describe('post-lesson learning goal flow', () => {
 
     fireEvent.press(screen.getByText('I’m committed'));
     expect(screen.getByLabelText('Weekly streak tracker')).toBeTruthy();
-    expect(screen.getByLabelText('Monday, completed')).toBeTruthy();
+    expect(screen.getByLabelText('Monday, not completed')).toBeTruthy();
     expect(screen.getByLabelText('Tuesday, not completed')).toBeTruthy();
+    expect(screen.getByLabelText('Wednesday, completed')).toBeTruthy();
   });
 
   test('keeps commitment disabled until a goal is selected', () => {
@@ -75,5 +92,12 @@ describe('post-lesson learning goal flow', () => {
       selectedStreakGoal: 5,
       isCommitted: true,
     });
+  });
+
+  test('returns to the first lesson when no authoritative completion exists', async () => {
+    useLessonResultsStore.setState({ latestSummary: null });
+    render(<LearningGoalFlowScreen />);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/lessons/first'));
   });
 });

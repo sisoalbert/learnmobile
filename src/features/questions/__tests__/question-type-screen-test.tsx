@@ -51,6 +51,22 @@ describe('QuestionTypeScreen', () => {
     expect(onContinue).toHaveBeenCalledWith(expect.objectContaining({ status: 'correct' }));
   });
 
+  test('exposes capped lesson progress to assistive technology', () => {
+    render(
+      <QuestionTypeScreen
+        question={QUESTION_FIXTURES_BY_TYPE.multiple_choice}
+        sequence={{ index: 2, total: 2 }}
+      />,
+    );
+
+    expect(screen.getByLabelText('2 of 2')).toHaveProp('accessibilityValue', {
+      min: 0,
+      max: 100,
+      now: 90,
+      text: '90% complete',
+    });
+  });
+
   test('reveals hints and lets an incorrect learner retry', () => {
     render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} />);
     fireEvent.press(screen.getByText('Show a hint'));

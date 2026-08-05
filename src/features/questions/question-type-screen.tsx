@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { QUESTION_COLORS, QUESTION_TYPE_META } from './question-constants';
 import { QuestionInteraction } from './question-components';
 import { answerMatchesQuestion, gradeQuestion, isAnswerComplete } from './question-engine';
+import { getLessonQuestionProgressPercent } from './lesson-progress';
 import { RuleList } from './question-ui';
 import type {
   CustomValidatorRegistry,
@@ -100,6 +101,9 @@ function QuestionTypeScreenContent({
   const complete = isAnswerComplete(question, answer);
   const feedbackColor = result?.status === 'correct' ? QUESTION_COLORS.green : result?.status === 'partially_correct' ? QUESTION_COLORS.amber : QUESTION_COLORS.red;
   const feedbackBackground = result?.status === 'correct' ? QUESTION_COLORS.greenSoft : result?.status === 'partially_correct' ? '#FFF7E6' : QUESTION_COLORS.redSoft;
+  const progressPercent = sequence
+    ? getLessonQuestionProgressPercent(sequence.index, sequence.total)
+    : 100;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -108,8 +112,18 @@ function QuestionTypeScreenContent({
           <Pressable accessibilityLabel="Back to question types" accessibilityRole="button" hitSlop={8} onPress={onBack} style={styles.headerButton}>
             <Lucide name="x" size={24} color={QUESTION_COLORS.muted} />
           </Pressable>
-          <View accessibilityLabel={sequence ? `${sequence.index} of ${sequence.total}` : undefined} accessibilityRole="progressbar" style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${sequence ? Math.max(5, sequence.index / sequence.total * 100) : 100}%`, backgroundColor: meta.color }]} />
+          <View
+            accessibilityLabel={sequence ? `${sequence.index} of ${sequence.total}` : undefined}
+            accessibilityRole="progressbar"
+            accessibilityValue={sequence ? {
+              min: 0,
+              max: 100,
+              now: progressPercent,
+              text: `${progressPercent}% complete`,
+            } : undefined}
+            style={styles.progressTrack}
+          >
+            <View style={[styles.progressFill, { width: `${progressPercent}%`, backgroundColor: meta.color }]} />
           </View>
           <View style={styles.xpPill}><Lucide name="zap" size={15} color="#F59E0B" /><Text selectable style={styles.xpText}>{question.xp} XP</Text></View>
         </View>

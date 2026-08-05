@@ -6,6 +6,7 @@ import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { StreakGoal } from '@/state/learning-goal-store';
+import type { UtcWeekDay } from '@/features/lessons/utc-week';
 
 export type { StreakGoal } from '@/state/learning-goal-store';
 
@@ -121,72 +122,64 @@ export function HabitIntroductionStep() {
   );
 }
 
-export function DailyPracticePromptStep() {
+export function DailyPracticePromptStep({ streakDays }: { streakDays: number }) {
   return (
     <StepFrame>
       <SpeechBubble>Can you practice every day?</SpeechBubble>
       <Mascot compact />
-      <StreakCount prominent={false} />
+      <StreakCount prominent={false} streakDays={streakDays} />
     </StepFrame>
   );
 }
 
-export function StreakConfirmationStep() {
+export function StreakConfirmationStep({
+  streakDays,
+  weekDays,
+}: {
+  streakDays: number;
+  weekDays: UtcWeekDay[];
+}) {
   return (
     <StepFrame>
       <SpeechBubble>Can you practice every day?</SpeechBubble>
       <Mascot compact />
-      <StreakCount prominent />
-      <WeeklyTracker />
+      <StreakCount prominent streakDays={streakDays} />
+      <WeeklyTracker days={weekDays} />
     </StepFrame>
   );
 }
 
-function StreakCount({ prominent }: { prominent: boolean }) {
+function StreakCount({ prominent, streakDays }: { prominent: boolean; streakDays: number }) {
   return (
     <View
-      accessibilityLabel="1 day streak"
+      accessibilityLabel={`${streakDays} day${streakDays === 1 ? '' : 's'} streak`}
       style={[styles.streakCount, prominent && styles.streakCountProminent]}
     >
-      <Text selectable style={[styles.streakNumber, prominent && styles.streakNumberProminent]}>1</Text>
-      <Text selectable style={styles.streakLabel}>day streak</Text>
+      <Text selectable style={[styles.streakNumber, prominent && styles.streakNumberProminent]}>{streakDays}</Text>
+      <Text selectable style={styles.streakLabel}>day{streakDays === 1 ? '' : 's'} streak</Text>
     </View>
   );
 }
 
-const WEEK_DAYS = [
-  { short: 'M', name: 'Monday' },
-  { short: 'T', name: 'Tuesday' },
-  { short: 'W', name: 'Wednesday' },
-  { short: 'T', name: 'Thursday' },
-  { short: 'F', name: 'Friday' },
-  { short: 'S', name: 'Saturday' },
-  { short: 'S', name: 'Sunday' },
-] as const;
-
-function WeeklyTracker() {
+function WeeklyTracker({ days }: { days: UtcWeekDay[] }) {
   return (
     <View accessibilityLabel="Weekly streak tracker" style={styles.weeklyTracker}>
-      {WEEK_DAYS.map((day, index) => {
-        const completed = index === 0;
-
-        return (
-          <View
-            accessibilityLabel={`${day.name}, ${completed ? 'completed' : 'not completed'}`}
-            key={day.name}
-            style={styles.dayColumn}
-          >
-            <View style={[styles.dayCircle, completed && styles.dayCircleCompleted]}>
-              {completed ? (
-                <Lucide name="check" size={19} color={COLORS.surface} />
-              ) : null}
-            </View>
-            <Text selectable style={[styles.dayLabel, completed && styles.dayLabelCompleted]}>
-              {day.short}
-            </Text>
+      {days.map((day) => (
+        <View
+          accessibilityLabel={`${day.label}, ${day.completed ? 'completed' : 'not completed'}`}
+          key={day.dateKey}
+          style={styles.dayColumn}
+        >
+          <View style={[styles.dayCircle, day.completed && styles.dayCircleCompleted]}>
+            {day.completed ? (
+              <Lucide name="check" size={19} color={COLORS.surface} />
+            ) : null}
           </View>
-        );
-      })}
+          <Text selectable style={[styles.dayLabel, day.completed && styles.dayLabelCompleted]}>
+            {day.label.slice(0, 1)}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }

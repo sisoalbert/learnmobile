@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   DailyPracticePromptStep,
@@ -8,7 +8,9 @@ import {
   StreakConfirmationStep,
   StreakGoalSelectionStep,
 } from '@/features/learning-goal/learning-goal-components';
+import { buildUtcWeekDays } from '@/features/lessons/utc-week';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
+import { useLessonResultsStore } from '@/state/lesson-results-store';
 
 type FlowStep = 'habit' | 'practice' | 'confirmation' | 'goal' | 'goal-selected';
 
@@ -18,6 +20,21 @@ export default function LearningGoalFlowScreen() {
   const selectedGoal = useLearningGoalStore((state) => state.selectedStreakGoal);
   const selectStreakGoal = useLearningGoalStore((state) => state.selectStreakGoal);
   const commitGoal = useLearningGoalStore((state) => state.commitGoal);
+  const lessonResultsHydrated = useLessonResultsStore((state) => state.hasHydrated);
+  const summary = useLessonResultsStore((state) => state.latestSummary);
+  const weekDays = useMemo(
+    () => summary
+      ? buildUtcWeekDays(summary.completedAt, summary.weeklyActivityDateKeys ?? [])
+      : [],
+    [summary],
+  );
+
+  useEffect(() => {
+    if (lessonResultsHydrated && !summary) router.replace('/lessons/first' as never);
+  }, [lessonResultsHydrated, router, summary]);
+
+  if (!lessonResultsHydrated || !summary) return null;
+  const streakDays = summary.streakDays ?? 0;
 
   if (step === 'habit') {
     return (
@@ -30,7 +47,7 @@ export default function LearningGoalFlowScreen() {
   if (step === 'practice') {
     return (
       <LearningGoalShell primaryLabel="I’m committed" onPrimaryPress={() => setStep('confirmation')}>
-        <DailyPracticePromptStep />
+        <DailyPracticePromptStep streakDays={streakDays} />
       </LearningGoalShell>
     );
   }
@@ -38,7 +55,7 @@ export default function LearningGoalFlowScreen() {
   if (step === 'confirmation') {
     return (
       <LearningGoalShell primaryLabel="I’m committed" onPrimaryPress={() => setStep('goal')}>
-        <StreakConfirmationStep />
+        <StreakConfirmationStep streakDays={streakDays} weekDays={weekDays} />
       </LearningGoalShell>
     );
   }

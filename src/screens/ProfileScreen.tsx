@@ -7,9 +7,8 @@ import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
-import { useLessonResultsStore } from '@/state/lesson-results-store';
+import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
 import { useSessionStore } from '@/state/sessionStore';
-import { useUserProfileStore } from '@/state/user-profile-store';
 import { api } from '../../convex/_generated/api';
 
 const DELETE_ACCOUNT_TITLE = 'Delete account?';
@@ -26,9 +25,6 @@ export default function ProfileScreen({
   const { signOut: signOutFromConvex } = useAuthActions();
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
   const user = useSessionStore((state) => state.user);
-  const clearLocalSession = useSessionStore((state) => state.signOut);
-  const resetProfile = useUserProfileStore((state) => state.resetProfile);
-  const resetLesson = useLessonResultsStore((state) => state.resetLesson);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const currentUser = useQuery(api.users.current, isAuthenticated ? {} : 'skip');
@@ -47,9 +43,6 @@ export default function ProfileScreen({
 
     try {
       await signOutFromConvex();
-      resetProfile();
-      clearLocalSession();
-      router.replace('/signin');
     } catch (error) {
       Sentry.captureException(error, {
         tags: {
@@ -59,7 +52,21 @@ export default function ProfileScreen({
       });
       Alert.alert('Unable to sign out', 'Please check your connection and try again.');
       setIsSigningOut(false);
+      return;
     }
+
+    try {
+      await clearAllZustandStores();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          area: 'storage',
+          operation: 'clear_after_sign_out',
+        },
+      });
+    }
+
+    router.replace('/signin');
   };
 
   const deleteAccount = async () => {
@@ -92,9 +99,17 @@ export default function ProfileScreen({
       });
     }
 
-    resetProfile();
-    resetLesson();
-    clearLocalSession();
+    try {
+      await clearAllZustandStores();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          area: 'storage',
+          operation: 'clear_after_delete',
+        },
+      });
+    }
+
     router.replace('/signin');
   };
 

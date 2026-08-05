@@ -1,7 +1,11 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert, Platform } from 'react-native';
 
+import { useLearnerSessionStore } from '@/state/learner-session-store';
+import { useLearnerRewardsStore } from '@/state/learner-rewards-store';
+import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useLessonResultsStore } from '@/state/lesson-results-store';
+import { useOnboardingStore } from '@/state/onboarding-store';
 import { useSessionStore } from '@/state/sessionStore';
 import { useUserProfileStore } from '@/state/user-profile-store';
 
@@ -41,6 +45,24 @@ describe('profile account actions', () => {
     mockDeleteCurrentUser.mockResolvedValue({ deleted: true });
     mockSignOutFromConvex.mockResolvedValue(undefined);
     useSessionStore.getState().setAuthenticatedUser({ id: 'user-id' });
+    useLearnerSessionStore.setState({
+      hasHydrated: true,
+      session: { learnerId: 'guest-test', credential: 'guest-secret' },
+    });
+    useLearnerRewardsStore.getState().setGemBalance(77);
+    useLearningGoalStore.setState({
+      hasHydrated: true,
+      selectedStreakGoal: 5,
+      isCommitted: true,
+    });
+    useOnboardingStore.setState({
+      hasHydrated: true,
+      currentStepId: 'lesson-transition',
+      isCompleted: true,
+      learningGoal: 'expo-fundamentals',
+      experienceLevel: 'javascript-typescript',
+      dailyGoalMinutes: 10,
+    });
     useUserProfileStore.setState({
       age: 25,
       firstName: 'Sam',
@@ -100,7 +122,7 @@ describe('profile account actions', () => {
     expect(screen.getByLabelText('Delete account')).toBeTruthy();
   });
 
-  test('signs out and clears profile data without clearing lesson progress', async () => {
+  test('signs out and clears every Zustand store', async () => {
     const screen = render(<ProfileScreen name="Profile" />);
 
     fireEvent.press(screen.getByLabelText('Sign out'));
@@ -115,7 +137,20 @@ describe('profile account actions', () => {
         email: '',
         isAccountCreated: false,
       });
-      expect(useLessonResultsStore.getState().latestSummary?.earnedXp).toBe(85);
+      expect(useOnboardingStore.getState()).toMatchObject({
+        currentStepId: 'welcome',
+        isCompleted: false,
+        learningGoal: null,
+        experienceLevel: null,
+        dailyGoalMinutes: null,
+      });
+      expect(useLearningGoalStore.getState()).toMatchObject({
+        selectedStreakGoal: null,
+        isCommitted: false,
+      });
+      expect(useLessonResultsStore.getState().latestSummary).toBeNull();
+      expect(useLearnerSessionStore.getState().session).toBeNull();
+      expect(useLearnerRewardsStore.getState().gems).toBe(0);
       expect(mockReplace).toHaveBeenCalledWith('/signin');
     });
   });
@@ -134,6 +169,10 @@ describe('profile account actions', () => {
       expect(useSessionStore.getState().isAuthenticated).toBe(true);
       expect(useUserProfileStore.getState().email).toBe('sam@example.com');
       expect(useLessonResultsStore.getState().latestSummary?.earnedXp).toBe(85);
+      expect(useOnboardingStore.getState().isCompleted).toBe(true);
+      expect(useLearningGoalStore.getState().isCommitted).toBe(true);
+      expect(useLearnerSessionStore.getState().session?.learnerId).toBe('guest-test');
+      expect(useLearnerRewardsStore.getState().gems).toBe(77);
       expect(mockReplace).not.toHaveBeenCalled();
     });
   });
@@ -166,6 +205,10 @@ describe('profile account actions', () => {
       expect(useSessionStore.getState().isAuthenticated).toBe(false);
       expect(useUserProfileStore.getState().email).toBe('');
       expect(useLessonResultsStore.getState().latestSummary).toBeNull();
+      expect(useOnboardingStore.getState().isCompleted).toBe(false);
+      expect(useLearningGoalStore.getState().isCommitted).toBe(false);
+      expect(useLearnerSessionStore.getState().session).toBeNull();
+      expect(useLearnerRewardsStore.getState().gems).toBe(0);
       expect(mockReplace).toHaveBeenCalledWith('/signin');
     });
   });
@@ -208,6 +251,10 @@ describe('profile account actions', () => {
       expect(useSessionStore.getState().isAuthenticated).toBe(false);
       expect(useUserProfileStore.getState().email).toBe('');
       expect(useLessonResultsStore.getState().latestSummary).toBeNull();
+      expect(useOnboardingStore.getState().isCompleted).toBe(false);
+      expect(useLearningGoalStore.getState().isCommitted).toBe(false);
+      expect(useLearnerSessionStore.getState().session).toBeNull();
+      expect(useLearnerRewardsStore.getState().gems).toBe(0);
       expect(mockReplace).toHaveBeenCalledWith('/signin');
     });
   });
@@ -246,6 +293,7 @@ describe('profile account actions', () => {
       expect(useSessionStore.getState().isAuthenticated).toBe(true);
       expect(useUserProfileStore.getState().email).toBe('sam@example.com');
       expect(useLessonResultsStore.getState().latestSummary?.earnedXp).toBe(85);
+      expect(useLearnerRewardsStore.getState().gems).toBe(77);
       expect(mockReplace).not.toHaveBeenCalled();
     });
   });

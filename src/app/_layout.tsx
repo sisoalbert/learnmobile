@@ -158,11 +158,10 @@ function AppNavigator() {
         <Stack.Screen name="create-profile" />
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
-        <Stack.Screen name="home" />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen name="todo" />
         <Stack.Screen name="learning-paths" />
         <Stack.Screen name="courses/[courseKey]" />
-        <Stack.Screen name="profile" />
         <Stack.Screen name="question-types" />
 
         <Stack.Screen name="signin" />
