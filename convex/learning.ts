@@ -338,6 +338,17 @@ async function activityDatesForWeek(ctx: QueryCtx | MutationCtx, owner: Owner, d
   return activities.filter((activity) => activity.lessonsCompleted > 0).map((activity) => activity.dateKey).sort();
 }
 
+async function activityDatesForMonth(ctx: QueryCtx, owner: Owner, monthKey: string) {
+  const firstDay = new Date(`${monthKey}-01T00:00:00Z`);
+  const lastDay = new Date(Date.UTC(firstDay.getUTCFullYear(), firstDay.getUTCMonth() + 1, 0));
+  const start = firstDay.toISOString().slice(0, 10);
+  const end = lastDay.toISOString().slice(0, 10);
+  const activities = owner.ownerType === 'user'
+    ? await ctx.db.query('dailyActivity').withIndex('by_user_date', (q) => q.eq('userId', owner.userId).gte('dateKey', start).lte('dateKey', end)).collect()
+    : await ctx.db.query('dailyActivity').withIndex('by_learner_date', (q) => q.eq('learnerSessionId', owner.learnerSessionId).gte('dateKey', start).lte('dateKey', end)).collect();
+  return activities.filter((activity) => activity.lessonsCompleted > 0).map((activity) => activity.dateKey).sort();
+}
+
 async function guestStreak(ctx: QueryCtx | MutationCtx, learnerSessionId: Id<'learnerSessions'>, dateKey: string) {
   const activities = await ctx.db.query('dailyActivity').withIndex('by_learner_date', (q) => q.eq('learnerSessionId', learnerSessionId)).collect();
   const dates = new Set(activities.filter((activity) => activity.lessonsCompleted > 0).map((activity) => activity.dateKey));
@@ -659,11 +670,20 @@ export const getAuthenticatedProgress = query({
   handler: async (ctx) => {
     const owner = await requireUser(ctx);
     const progress = await ctx.db.query('userCourseProgress').withIndex('by_user_course', (q) => q.eq('userId', owner.userId)).collect();
-    const [streak, wallet] = await Promise.all([
+    const monthKey = monthKeyForDate(new Date().toISOString().slice(0, 10));
+    const [streak, wallet, monthlyQuest, monthlyActivityDateKeys] = await Promise.all([
       ctx.db.query('streaks').withIndex('by_user', (q) => q.eq('userId', owner.userId)).unique(),
       getRewardWallet(ctx, owner),
+      getMonthlyQuest(ctx, owner, monthKey),
+      activityDatesForMonth(ctx, owner, monthKey),
     ]);
-    return { progress: await Promise.all(progress.map((item) => progressView(ctx, item))), streakDays: streak?.currentDays ?? 0, gems: wallet?.gems ?? 0 };
+    return {
+      progress: await Promise.all(progress.map((item) => progressView(ctx, item))),
+      streakDays: streak?.currentDays ?? 0,
+      gems: wallet?.gems ?? 0,
+      monthlyQuest: monthlyQuestView(monthlyQuest, monthKey),
+      monthlyActivityDateKeys,
+    };
   },
 });
 
@@ -672,14 +692,19 @@ export const getGuestProgress = query({
   handler: async (ctx, args) => {
     const owner = await requireGuest(ctx, args.learnerId, args.credential);
     const progress = await ctx.db.query('userCourseProgress').withIndex('by_learner_course', (q) => q.eq('learnerSessionId', owner.learnerSessionId)).collect();
-    const [streakDays, wallet] = await Promise.all([
+    const monthKey = monthKeyForDate(new Date().toISOString().slice(0, 10));
+    const [streakDays, wallet, monthlyQuest, monthlyActivityDateKeys] = await Promise.all([
       guestStreak(ctx, owner.learnerSessionId, new Date().toISOString().slice(0, 10)),
       getRewardWallet(ctx, owner),
+      getMonthlyQuest(ctx, owner, monthKey),
+      activityDatesForMonth(ctx, owner, monthKey),
     ]);
     return {
       progress: await Promise.all(progress.map((item) => progressView(ctx, item))),
       streakDays,
       gems: wallet?.gems ?? 0,
+      monthlyQuest: monthlyQuestView(monthlyQuest, monthKey),
+      monthlyActivityDateKeys,
     };
   },
 });

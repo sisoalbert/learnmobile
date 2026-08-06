@@ -1,5 +1,5 @@
-import EmptyTabScreen from '@/screens/empty-tab-screen';
+import CalendarScreen from '@/features/calendar/calendar-screen';
 
 export default function CalendarRoute() {
-  return <EmptyTabScreen />;
+  return <CalendarScreen />;
 }

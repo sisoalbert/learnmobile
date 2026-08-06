@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLearnerRewardsStore } from '@/state/learner-rewards-store';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
 import { useLessonResultsStore } from '@/state/lesson-results-store';
+import { QuestProgressCard } from '@/features/quests/quest-progress-card';
 import { api } from '../../../convex/_generated/api';
 import { buildUtcWeekDays } from './utc-week';
 
@@ -272,29 +273,13 @@ export function PostLessonMonthlyQuestScreen() {
       onPrimaryPress={() => void openChest()}
     >
       <View style={styles.questList}>
-        <QuestCard icon="flame" label="Extend your streak" value={quest.streakExtensions} target={quest.streakTarget} color="#F28B19" />
-        <QuestCard icon="book-open-check" label="Complete 2 lessons" value={quest.lessonsCompleted} target={quest.lessonsTarget} color="#2289FD" />
-        <QuestCard icon="target" label="Score 80% in 3 lessons" value={quest.highAccuracyLessons} target={quest.highAccuracyTarget} color="#27A844" />
-        <QuestCard icon="calendar-days" label={`${monthTitle} Quest`} value={quest.questPoints} target={quest.questTarget} color="#8C5BD6" />
+        <QuestProgressCard icon="flame" label="Extend your streak" value={quest.streakExtensions} target={quest.streakTarget} color="#F28B19" />
+        <QuestProgressCard icon="book-open-check" label="Complete 2 lessons" value={quest.lessonsCompleted} target={quest.lessonsTarget} color="#2289FD" />
+        <QuestProgressCard icon="target" label="Score 80% in 3 lessons" value={quest.highAccuracyLessons} target={quest.highAccuracyTarget} color="#27A844" />
+        <QuestProgressCard icon="calendar-days" label={`${monthTitle} Quest`} value={quest.questPoints} target={quest.questTarget} color="#8C5BD6" />
       </View>
       {errorMessage ? <Text accessibilityRole="alert" selectable style={styles.errorText}>{errorMessage}</Text> : null}
     </PostLessonShell>
-  );
-}
-
-function QuestCard({ icon, label, value, target, color }: { icon: LucideIconName; label: string; value: number; target: number; color: string }) {
-  const progress = Math.min(1, value / Math.max(1, target));
-  return (
-    <View style={styles.questCard}>
-      <View style={[styles.questIcon, { backgroundColor: `${color}18` }]}><Lucide name={icon} size={20} color={color} /></View>
-      <View style={styles.questCopy}>
-        <View style={styles.questLabels}>
-          <Text selectable style={styles.questLabel}>{label}</Text>
-          <Text selectable style={[styles.questValue, { color }]}>{value} / {target}</Text>
-        </View>
-        <View style={styles.progressTrack}><View style={[styles.progressFill, { backgroundColor: color, width: `${progress * 100}%` }]} /></View>
-      </View>
-    </View>
   );
 }
 
@@ -368,14 +353,6 @@ const styles = StyleSheet.create({
   dayLetter: { color: '#7A8498', fontSize: 13, fontWeight: '900' },
   dayLabel: { color: '#7A8498', fontSize: 10, fontWeight: '800' },
   questList: { width: '100%', gap: 10 },
-  questCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderWidth: 1, borderColor: '#E4E7EC', borderRadius: 16, backgroundColor: '#FFFFFF' },
-  questIcon: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 13 },
-  questCopy: { flex: 1, gap: 8 },
-  questLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  questLabel: { flex: 1, color: '#344054', fontSize: 13, fontWeight: '800' },
-  questValue: { fontSize: 12, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  progressTrack: { height: 8, overflow: 'hidden', borderRadius: 999, backgroundColor: '#ECEFF3' },
-  progressFill: { height: '100%', borderRadius: 999 },
   errorText: { color: '#C43D3D', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   gemReward: { alignItems: 'center', gap: 12, padding: 24, borderRadius: 24, backgroundColor: '#E8FBFD' },
   gemBalance: { color: '#167786', fontSize: 16, fontWeight: '900', fontVariant: ['tabular-nums'] },

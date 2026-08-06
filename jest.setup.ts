@@ -20,12 +20,21 @@ jest.mock('react-native-reanimated', () => {
     __esModule: true,
     default: { ScrollView, Text, View, createAnimatedComponent: (component: unknown) => component },
     BounceIn: animation,
+    cancelAnimation: jest.fn(),
+    Easing: {
+      ease: jest.fn(),
+      inOut: () => jest.fn(),
+      linear: jest.fn(),
+    },
     FadeInUp: animation,
     ZoomIn: animation,
     useAnimatedStyle: (factory: () => unknown) => factory(),
     useEvent: () => jest.fn(),
+    useReducedMotion: jest.fn(() => false),
     useSharedValue: (value: unknown) => ({ value }),
-    withSpring: (value: unknown) => value,
+    withRepeat: jest.fn((value: unknown) => value),
+    withSpring: jest.fn((value: unknown) => value),
+    withTiming: jest.fn((value: unknown) => value),
   };
 });
 
