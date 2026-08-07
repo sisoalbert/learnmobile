@@ -36,12 +36,13 @@ export default function SignInScreen() {
     process.env.CONVEX_DEPLOYMENT ||
     (process.env.EXPO_PUBLIC_CONVEX_URL
       ? process.env.EXPO_PUBLIC_CONVEX_URL.replace(/^https?:\/\//, '').replace(/\.convex\.(cloud|site)$/, '')
-      : 'prod:laudable-labrador-921');
+      : process.env.EXPO_PUBLIC_CONVEX_URL || '');
 
-  const deploymentName =
-    rawDeployment.startsWith('dev:') || rawDeployment.startsWith('prod:')
+  const deploymentName = rawDeployment
+    ? rawDeployment.startsWith('dev:') || rawDeployment.startsWith('prod:')
       ? rawDeployment
-      : `prod:${rawDeployment}`;
+      : `prod:${rawDeployment}`
+    : process.env.EXPO_PUBLIC_CONVEX_URL || '';
 
   const normalizedEmail = email.trim().toLowerCase();
   const isFormValid = normalizedEmail.length > 0 && password.length > 0;
@@ -100,9 +101,11 @@ export default function SignInScreen() {
         />
         
         <View style={styles.form}>
-          <Text selectable style={styles.devModeBadge}>
-            {deploymentName}
-          </Text>
+          {__DEV__ ? (
+            <Text selectable style={styles.devModeBadge}>
+              {deploymentName}
+            </Text>
+          ) : null}
           <TextInput
             style={styles.input}
             placeholder="Email"
