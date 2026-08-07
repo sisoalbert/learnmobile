@@ -37,7 +37,7 @@ export default function LessonCompleteScreen() {
             <Image
               accessibilityLabel="Rex celebrating the completed lesson"
               contentFit="contain"
-              source={require('../../../assets/logo.png')}
+              source={require('@/assets/logo.png')}
               style={styles.mascot}
             />
           </Animated.View>

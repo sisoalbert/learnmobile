@@ -68,7 +68,7 @@ function PostLessonShell({
               <Image
                 accessibilityLabel="Rex, the Learn Expo guide"
                 contentFit="contain"
-                source={require('../../../assets/logo.png')}
+                source={require('@/assets/logo.png')}
                 style={styles.mascot}
               />
             )}

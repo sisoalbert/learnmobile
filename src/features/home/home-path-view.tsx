@@ -18,7 +18,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import type { LessonNode, PathUnit, PublishedCourse } from './home-path';
 
-const REX = require('../../../assets/generated/logo.png');
+const REX = require('@/assets/logo.png');
 const NODE_SIZE = 76;
 const NODE_RADIUS = NODE_SIZE / 2;
 const PATH_MAX_WIDTH = 520;

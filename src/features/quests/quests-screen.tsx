@@ -56,7 +56,7 @@ export default function QuestsScreen() {
           <Image
             accessibilityLabel="Rex, the Learn Expo quest guide"
             contentFit="contain"
-            source={require('../../../assets/logo.png')}
+            source={require('@/assets/logo.png')}
             style={styles.mascot}
           />
         </View>

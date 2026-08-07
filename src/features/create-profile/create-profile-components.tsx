@@ -186,7 +186,7 @@ function Mascot({ happy = false }: { happy?: boolean }) {
       <Image
         accessibilityLabel={happy ? 'Rex celebrating your new profile' : 'Rex, the Learn Expo guide'}
         contentFit="contain"
-        source={require('../../../assets/logo.png')}
+        source={require('@/assets/logo.png')}
         style={[styles.mascot, happy && styles.happyMascot]}
       />
     </Animated.View>

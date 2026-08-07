@@ -70,7 +70,7 @@ export default function LessonResultsScreen() {
             <Image
               accessibilityLabel="Rex celebrating your lesson results"
               contentFit="contain"
-              source={require('../../../assets/logo.png')}
+              source={require('@/assets/logo.png')}
               style={styles.mascot}
             />
           </Animated.View>
