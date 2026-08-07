@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import LearningGoalFlowScreen from '../learning-goal-flow-screen';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useLessonResultsStore } from '@/state/lesson-results-store';
+import { feedback } from '@/services/feedback';
 
 const mockReplace = jest.fn();
 
@@ -11,6 +12,8 @@ jest.mock('expo-router', () => ({
 }));
 
 describe('post-lesson learning goal flow', () => {
+  const feedbackPlay = jest.spyOn(feedback, 'play').mockImplementation(() => undefined);
+
   beforeEach(() => {
     jest.clearAllMocks();
     useLearningGoalStore.getState().resetGoal();
@@ -68,6 +71,7 @@ describe('post-lesson learning goal flow', () => {
     expect(screen.getByText('Learners with a streak goal are more likely to finish their course!')).toBeTruthy();
     expect(screen.getByLabelText('5 day streak goal, earn 500 gems').props.accessibilityState).toEqual({ checked: true });
     expect(screen.getByRole('button', { name: 'Commit to my goal' }).props.accessibilityState).toEqual({ disabled: false });
+    expect(feedbackPlay).toHaveBeenCalledWith('optionSelected');
   });
 
   test.each([
@@ -92,6 +96,7 @@ describe('post-lesson learning goal flow', () => {
       selectedStreakGoal: 5,
       isCommitted: true,
     });
+    expect(feedbackPlay).toHaveBeenCalledWith('commitmentConfirmed');
   });
 
   test('returns to the first lesson when no authoritative completion exists', async () => {

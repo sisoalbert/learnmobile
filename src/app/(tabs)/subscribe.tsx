@@ -1,5 +1,5 @@
-import EmptyTabScreen from '@/screens/empty-tab-screen';
+import SubscriptionScreen from '@/screens/SubscriptionScreen';
 
 export default function SubscribeRoute() {
-  return <EmptyTabScreen />;
+  return <SubscriptionScreen />;
 }

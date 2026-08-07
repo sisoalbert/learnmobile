@@ -4,6 +4,7 @@ import { useLearnerSessionStore } from '@/state/learner-session-store';
 import { useLearnerRewardsStore } from '@/state/learner-rewards-store';
 import { useLessonResultsStore, type LessonSummary } from '@/state/lesson-results-store';
 import type { Id } from '../../../../convex/_generated/dataModel';
+import { feedback } from '@/services/feedback';
 import {
   PostLessonAdScreen,
   PostLessonMonthlyQuestScreen,
@@ -58,6 +59,8 @@ const summary: LessonSummary = {
 };
 
 describe('returning learner post-lesson flow', () => {
+  const feedbackPlay = jest.spyOn(feedback, 'play').mockImplementation(() => undefined);
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockClaimReward.mockResolvedValue({ gemsEarned: 12, totalGems: 20, alreadyClaimed: false });
@@ -85,9 +88,11 @@ describe('returning learner post-lesson flow', () => {
 
   test('auto-advances from streak intro after the celebration', () => {
     jest.useFakeTimers();
-    render(<PostLessonStreakIncreaseScreen />);
+    const screen = render(<PostLessonStreakIncreaseScreen />);
+    screen.rerender(<PostLessonStreakIncreaseScreen />);
 
     expect(mockReplace).not.toHaveBeenCalled();
+    expect(feedbackPlay.mock.calls.filter(([event]) => event === 'streakIncrease')).toHaveLength(1);
     act(() => jest.advanceTimersByTime(STREAK_INTRO_DURATION_MS));
     expect(mockReplace).toHaveBeenCalledWith('/lessons/streak-details');
     jest.useRealTimers();
@@ -158,15 +163,32 @@ describe('returning learner post-lesson flow', () => {
     });
   });
 
-  test('shows the claimed gems and clears the completed flow at Home', () => {
+  test('returns home and invalidates a rejected guest session during reward claim', async () => {
+    mockClaimReward.mockRejectedValueOnce(
+      new Error('[CONVEX] INVALID_LEARNER_CREDENTIAL'),
+    );
+    const screen = render(<PostLessonMonthlyQuestScreen />);
+
+    fireEvent.press(screen.getByText('Open Chest'));
+
+    await waitFor(() => {
+      expect(useLearnerSessionStore.getState().session).toBeNull();
+      expect(useLessonResultsStore.getState().latestSummary).toBeNull();
+      expect(mockReplace).toHaveBeenCalledWith('/home');
+    });
+  });
+
+  test('shows the claimed gems, plays reward feedback once, and clears the flow at Home', () => {
     useLessonResultsStore.setState({
       claimedReward: { gemsEarned: 12, totalGems: 20, alreadyClaimed: false },
     });
     const screen = render(<PostLessonRewardScreen />);
+    screen.rerender(<PostLessonRewardScreen />);
 
     expect(screen.getByText('+12 gems')).toBeTruthy();
     expect(screen.getByText('Balance: 20')).toBeTruthy();
     expect(useLearnerRewardsStore.getState().gems).toBe(20);
+    expect(feedbackPlay.mock.calls.filter(([event]) => event === 'rewardEarned')).toHaveLength(1);
     fireEvent.press(screen.getByText('Continue'));
 
     expect(useLessonResultsStore.getState().latestSummary).toBeNull();

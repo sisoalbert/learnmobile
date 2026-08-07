@@ -1,4 +1,5 @@
 import { Lucide, type LucideIconName } from '@react-native-vector-icons/lucide';
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import type { PropsWithChildren } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -52,6 +53,38 @@ function Bullet({ children }: PropsWithChildren) {
         {children}
       </Text>
     </View>
+  );
+}
+
+type SoundEffectAttributionProps = {
+  creator: string;
+  creatorUrl: string;
+  sourceUrl: string;
+};
+
+function SoundEffectAttribution({ creator, creatorUrl, sourceUrl }: SoundEffectAttributionProps) {
+  return (
+    <Paragraph>
+      Sound Effect by{' '}
+      <Text
+        accessibilityRole="link"
+        onPress={() => void Linking.openURL(creatorUrl)}
+        selectable
+        style={styles.link}
+      >
+        {creator}
+      </Text>{' '}
+      from{' '}
+      <Text
+        accessibilityRole="link"
+        onPress={() => void Linking.openURL(sourceUrl)}
+        selectable
+        style={styles.link}
+      >
+        Pixabay
+      </Text>
+      .
+    </Paragraph>
   );
 }
 
@@ -149,6 +182,43 @@ export default function PrivacyPolicyScreen() {
             </Paragraph>
           </PolicySection>
 
+          <PolicySection icon="music" title="Sound effect attributions">
+            <Paragraph>
+              Learn Expo uses the following sound effects under the creators&apos; Pixabay
+              attribution terms:
+            </Paragraph>
+            <SoundEffectAttribution
+              creator="DRAGON-STUDIO"
+              creatorUrl="https://pixabay.com/users/dragon-studio-38165424/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=472358"
+              sourceUrl="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=472358"
+            />
+            <SoundEffectAttribution
+              creator="freesound_community"
+              creatorUrl="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=84419"
+              sourceUrl="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=84419"
+            />
+            <SoundEffectAttribution
+              creator="Advik Singh"
+              creatorUrl="https://pixabay.com/users/scratchonix-50592769/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=366449"
+              sourceUrl="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=366449"
+            />
+            <SoundEffectAttribution
+              creator="Universfield"
+              creatorUrl="https://pixabay.com/users/universfield-28281460/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=126515"
+              sourceUrl="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=126515"
+            />
+            <SoundEffectAttribution
+              creator="Existential Taco"
+              creatorUrl="https://pixabay.com/users/existentialtaco-51014313/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=394001"
+              sourceUrl="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=394001"
+            />
+            <SoundEffectAttribution
+              creator="SoundShelfStudio"
+              creatorUrl="https://pixabay.com/users/soundshelfstudio-46480698/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=513023"
+              sourceUrl="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=513023"
+            />
+          </PolicySection>
+
           <PolicySection icon="sliders-horizontal" title="Your choices and controls">
             <Bullet>You can use parts of Learn Expo as a guest without creating an account.</Bullet>
             <Bullet>You can reset locally saved onboarding choices from Settings.</Bullet>
@@ -228,6 +298,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   body: { color: COLORS.muted, fontSize: 16, lineHeight: 25 },
+  link: { color: COLORS.blue, textDecorationLine: 'underline' },
   summaryCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',

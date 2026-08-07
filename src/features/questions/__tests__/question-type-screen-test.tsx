@@ -1,11 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 
+import { feedback } from '@/services/feedback';
 import { QUESTION_FIXTURES_BY_TYPE } from '../question-fixtures';
 import { QuestionTypeScreen } from '../question-type-screen';
 import { parseTemplateLines } from '../question-ui';
 
 describe('QuestionTypeScreen', () => {
+  const feedbackPlay = jest.spyOn(feedback, 'play').mockImplementation(() => undefined);
+
+  beforeEach(() => feedbackPlay.mockClear());
+
   test('preserves code lines and keeps blanks within their source line', () => {
     expect(parseTemplateLines('return (\n  <Text>{{message}}</Text>\n);')).toEqual([
       [{ type: 'text', value: 'return (' }],
@@ -49,6 +54,8 @@ describe('QuestionTypeScreen', () => {
     expect(screen.getByText('Why?')).toBeTruthy();
     fireEvent.press(screen.getByText('Continue'));
     expect(onContinue).toHaveBeenCalledWith(expect.objectContaining({ status: 'correct' }));
+    expect(feedbackPlay).toHaveBeenCalledWith('correctAnswer');
+    expect(feedbackPlay).toHaveBeenCalledWith('buttonTap');
   });
 
   test('exposes capped lesson progress to assistive technology', () => {
@@ -74,6 +81,7 @@ describe('QuestionTypeScreen', () => {
     fireEvent.press(screen.getByText('Display text'));
     fireEvent.press(screen.getByText('Check answer'));
     expect(screen.getByText('Not quite yet')).toBeTruthy();
+    expect(feedbackPlay).toHaveBeenCalledWith('incorrectAnswer');
     fireEvent.press(screen.getByText('Try again'));
     expect(screen.queryByText('Not quite yet')).toBeNull();
   });

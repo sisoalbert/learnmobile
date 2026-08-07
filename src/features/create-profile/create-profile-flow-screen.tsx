@@ -22,6 +22,7 @@ import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { useSessionStore } from '@/state/sessionStore';
 import { getProfileFullName, useUserProfileStore } from '@/state/user-profile-store';
+import { feedback } from '@/services/feedback';
 import { api } from '../../../convex/_generated/api';
 
 type CreateProfileStep = 'prompt' | 'age' | 'name' | 'email' | 'password' | 'success';
@@ -82,6 +83,7 @@ export default function CreateProfileFlowScreen() {
       setEmail(pendingProfile.email);
       markAccountCreated();
       setPendingProfile(null);
+      feedback.play('profileCreated');
       setStep('success');
     }).catch((error) => {
       if (!active) return;

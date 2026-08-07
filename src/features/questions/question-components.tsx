@@ -2,6 +2,7 @@ import { Lucide } from '@react-native-vector-icons/lucide';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { feedback } from '@/services/feedback';
 import { parseCodeToRenderTree, validateChallengeRequirements, validateRenderRules } from './code-preview';
 import { QUESTION_COLORS } from './question-constants';
 import {
@@ -173,7 +174,10 @@ export function FindErrorQuestionScreen({ question, answer, disabled, onAnswerCh
           <View style={styles.tokenFlow}>{line.split(/(\s+|[(){};,])/).filter(Boolean).map((token, tokenIndex) => {
             const startColumn = line.indexOf(token) + 1;
             const active = selected.some((range) => range.startLine === lineIndex + 1 && range.startColumn === startColumn);
-            return <Pressable key={`${token}-${tokenIndex}`} disabled={disabled || /^\s+$/.test(token)} onPress={() => onAnswerChange({ ...answer, selectedRanges: active ? selected.filter((range) => !(range.startLine === lineIndex + 1 && range.startColumn === startColumn)) : [...selected, { startLine: lineIndex + 1, startColumn, endColumn: startColumn + token.length }] })} style={[styles.token, active && styles.tokenActive]}><Text selectable style={styles.miniCode}>{token}</Text></Pressable>;
+            return <Pressable key={`${token}-${tokenIndex}`} disabled={disabled || /^\s+$/.test(token)} onPress={() => {
+              feedback.play('buttonTap');
+              onAnswerChange({ ...answer, selectedRanges: active ? selected.filter((range) => !(range.startLine === lineIndex + 1 && range.startColumn === startColumn)) : [...selected, { startLine: lineIndex + 1, startColumn, endColumn: startColumn + token.length }] });
+            }} style={[styles.token, active && styles.tokenActive]}><Text selectable style={styles.miniCode}>{token}</Text></Pressable>;
           })}</View>
         </View>
       ))}</View>
@@ -198,7 +202,11 @@ export function PredictOutputQuestionScreen({ question, answer, disabled, onAnsw
       <CodeCard code={question.code} />
       {question.answerMode === 'text' ? <TextInput editable={!disabled} placeholder="Type the output" placeholderTextColor="#9AA0AC" value={answer?.mode === 'text' ? answer.value : ''} onChangeText={(value) => onAnswerChange({ mode: 'text', value })} style={styles.answerInput} /> : null}
       {question.answerMode === 'multiple_choice' ? <View style={styles.list}>{question.options?.map((option) => <SelectionCard key={option.id} label={option.text ?? 'Preview option'} selected={answer?.mode === 'multiple_choice' && answer.selectedOptionId === option.id} disabled={disabled} onPress={() => onAnswerChange({ mode: 'multiple_choice', selectedOptionId: option.id })} />)}</View> : null}
-      {question.answerMode === 'ui_preview' ? <View style={styles.previewOptions}>{question.options?.filter((option) => option.uiTree).map((option) => <Pressable key={option.id} accessibilityRole="radio" accessibilityState={{ checked: selectedTree === JSON.stringify(option.uiTree) }} disabled={disabled} onPress={() => option.uiTree && onAnswerChange({ mode: 'ui_preview', renderTree: option.uiTree })} style={[styles.previewOption, selectedTree === JSON.stringify(option.uiTree) && styles.previewOptionSelected]}><DevicePreview tree={option.uiTree} label={option.text ?? 'Preview option'} /></Pressable>)}</View> : null}
+      {question.answerMode === 'ui_preview' ? <View style={styles.previewOptions}>{question.options?.filter((option) => option.uiTree).map((option) => <Pressable key={option.id} accessibilityRole="radio" accessibilityState={{ checked: selectedTree === JSON.stringify(option.uiTree) }} disabled={disabled} onPress={() => {
+        if (!option.uiTree) return;
+        feedback.play('buttonTap');
+        onAnswerChange({ mode: 'ui_preview', renderTree: option.uiTree });
+      }} style={[styles.previewOption, selectedTree === JSON.stringify(option.uiTree) && styles.previewOptionSelected]}><DevicePreview tree={option.uiTree} label={option.text ?? 'Preview option'} /></Pressable>)}</View> : null}
     </View>
   );
 }
@@ -208,7 +216,10 @@ export function IdentifyComponentQuestionScreen({ question, answer, disabled, on
   return (
     <View style={styles.sectionGap}>
       <Text selectable style={styles.helper}>{question.taskDescription}</Text>
-      <View style={styles.cardGrid}>{options.map((option) => <Pressable key={option.id} accessibilityRole="radio" accessibilityState={{ checked: answer?.selectedComponentId === option.id }} disabled={disabled} onPress={() => onAnswerChange({ selectedComponentId: option.id })} style={[styles.componentCard, answer?.selectedComponentId === option.id && styles.componentCardSelected]}><Lucide name={option.componentName === 'Image' ? 'image' : option.componentName === 'TextInput' ? 'text-cursor-input' : option.componentName === 'Pressable' ? 'mouse-pointer-click' : 'square-dashed'} size={28} color={answer?.selectedComponentId === option.id ? QUESTION_COLORS.green : QUESTION_COLORS.muted} /><Text selectable style={styles.componentName}>{option.code ?? `<${option.componentName} />`}</Text></Pressable>)}</View>
+      <View style={styles.cardGrid}>{options.map((option) => <Pressable key={option.id} accessibilityRole="radio" accessibilityState={{ checked: answer?.selectedComponentId === option.id }} disabled={disabled} onPress={() => {
+        feedback.play('buttonTap');
+        onAnswerChange({ selectedComponentId: option.id });
+      }} style={[styles.componentCard, answer?.selectedComponentId === option.id && styles.componentCardSelected]}><Lucide name={option.componentName === 'Image' ? 'image' : option.componentName === 'TextInput' ? 'text-cursor-input' : option.componentName === 'Pressable' ? 'mouse-pointer-click' : 'square-dashed'} size={28} color={answer?.selectedComponentId === option.id ? QUESTION_COLORS.green : QUESTION_COLORS.muted} /><Text selectable style={styles.componentName}>{option.code ?? `<${option.componentName} />`}</Text></Pressable>)}</View>
     </View>
   );
 }
@@ -260,7 +271,11 @@ export function DragDropBuilderQuestionScreen({ question, answer, disabled, onAn
               accessibilityRole="button"
               accessibilityState={{ disabled: disabled || !selectedBlock }}
               disabled={disabled || !selectedBlock}
-              onPress={() => selectedBlock && addToSlot(selectedBlock, slot.id)}
+              onPress={() => {
+                if (!selectedBlock) return;
+                feedback.play('buttonTap');
+                addToSlot(selectedBlock, slot.id);
+              }}
               style={({ pressed }) => [styles.slotAction, selectedBlock && styles.slotActionReady, pressed && styles.slotActionPressed]}
             >
               <Text selectable style={styles.slotLabel}>{slot.id}</Text>
@@ -316,7 +331,10 @@ export function GuessThreeThingsQuestionScreen({ question, answer, disabled, onA
   return (
     <View style={styles.sectionGap}>
       <View accessibilityLabel={`${selected.length} of 3 selected`} accessibilityRole="progressbar" style={styles.threeProgress}>{[0, 1, 2].map((step) => <View key={step} style={[styles.threeStep, step < selected.length && styles.threeStepActive]} />)}</View>
-      <View style={styles.chipGrid}>{options.map((option) => <Pressable key={option.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected.includes(option.id), disabled: disabled || (!selected.includes(option.id) && selected.length >= 3) }} disabled={disabled || (!selected.includes(option.id) && selected.length >= 3)} onPress={() => toggle(option.id)} style={[styles.guessChip, selected.includes(option.id) && styles.guessChipSelected]}><Text selectable style={[styles.guessText, selected.includes(option.id) && styles.guessTextSelected]}>{option.text}</Text></Pressable>)}</View>
+      <View style={styles.chipGrid}>{options.map((option) => <Pressable key={option.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected.includes(option.id), disabled: disabled || (!selected.includes(option.id) && selected.length >= 3) }} disabled={disabled || (!selected.includes(option.id) && selected.length >= 3)} onPress={() => {
+        feedback.play('buttonTap');
+        toggle(option.id);
+      }} style={[styles.guessChip, selected.includes(option.id) && styles.guessChipSelected]}><Text selectable style={[styles.guessText, selected.includes(option.id) && styles.guessTextSelected]}>{option.text}</Text></Pressable>)}</View>
     </View>
   );
 }

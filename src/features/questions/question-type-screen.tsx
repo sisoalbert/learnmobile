@@ -14,6 +14,7 @@ import type {
   Question,
   QuestionAnswer,
 } from './questions.types';
+import { feedback } from '@/services/feedback';
 
 export type QuestionTypeScreenProps = {
   question: Question;
@@ -68,6 +69,7 @@ function QuestionTypeScreenContent({
         : gradeQuestion(question, answer, customValidators);
       setResult(nextResult);
       setAttempts((value) => value + 1);
+      feedback.play(nextResult.status === 'correct' ? 'correctAnswer' : 'incorrectAnswer');
       onResult?.(nextResult);
     } catch (error) {
       setSubmissionError(error instanceof Error ? error.message : 'Unable to check this answer.');
@@ -109,7 +111,10 @@ function QuestionTypeScreenContent({
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.page}>
         <View style={styles.header}>
-          <Pressable accessibilityLabel="Back to question types" accessibilityRole="button" hitSlop={8} onPress={onBack} style={styles.headerButton}>
+          <Pressable accessibilityLabel="Back to question types" accessibilityRole="button" hitSlop={8} onPress={() => {
+            feedback.play('buttonTap');
+            onBack?.();
+          }} style={styles.headerButton}>
             <Lucide name="x" size={24} color={QUESTION_COLORS.muted} />
           </Pressable>
           <View
@@ -152,7 +157,10 @@ function QuestionTypeScreenContent({
                 const hint = question.hints?.find((candidate) => candidate.id === id);
                 return hint ? <View key={id} style={styles.hintCard}><Lucide name="lightbulb" size={18} color="#C67B05" /><Text selectable style={styles.hintText}>{hint.text}{hint.penalty ? ` (−${hint.penalty} XP)` : ''}</Text></View> : null;
               })}
-              {visibleHintIds.length < question.hints.length && !result ? <Pressable accessibilityRole="button" onPress={showHint} style={styles.hintButton}><Lucide name="lightbulb" size={17} color={QUESTION_COLORS.muted} /><Text selectable style={styles.hintButtonText}>Show a hint</Text></Pressable> : null}
+              {visibleHintIds.length < question.hints.length && !result ? <Pressable accessibilityRole="button" onPress={() => {
+                feedback.play('buttonTap');
+                showHint();
+              }} style={styles.hintButton}><Lucide name="lightbulb" size={17} color={QUESTION_COLORS.muted} /><Text selectable style={styles.hintButtonText}>Show a hint</Text></Pressable> : null}
             </View>
           ) : null}
 
@@ -188,7 +196,10 @@ function QuestionTypeScreenContent({
 
 function PrimaryButton({ label, disabled, color = QUESTION_COLORS.blue, onPress }: { label: string; disabled?: boolean; color?: string; onPress?: () => void }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryButton, { backgroundColor: disabled ? '#D8DCE3' : color, boxShadow: disabled ? '0 4px 0 #BEC3CC' : `0 4px 0 ${color === QUESTION_COLORS.blue ? QUESTION_COLORS.blueDark : color}` }, pressed && !disabled && styles.buttonPressed]}>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={() => {
+      feedback.play('buttonTap');
+      onPress?.();
+    }} style={({ pressed }) => [styles.primaryButton, { backgroundColor: disabled ? '#D8DCE3' : color, boxShadow: disabled ? '0 4px 0 #BEC3CC' : `0 4px 0 ${color === QUESTION_COLORS.blue ? QUESTION_COLORS.blueDark : color}` }, pressed && !disabled && styles.buttonPressed]}>
       <Text selectable style={styles.primaryButtonText}>{label}</Text>
     </Pressable>
   );

@@ -2,6 +2,8 @@ import { Lucide, type LucideIconName } from '@react-native-vector-icons/lucide';
 import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
 
+import { feedback } from '@/services/feedback';
+
 const ACTIVE_COLOR = '#2289FD';
 const INACTIVE_COLOR = '#7C879C';
 const SUBSCRIBE_COLOR = '#D99112';
@@ -14,6 +16,9 @@ export default function TabLayout() {
   return (
     <Tabs
       initialRouteName="home"
+      screenListeners={{
+        tabPress: () => feedback.play('buttonTap'),
+      }}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: ACTIVE_COLOR,

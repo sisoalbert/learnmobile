@@ -1,7 +1,7 @@
 import { Lucide, type LucideIconName } from '@react-native-vector-icons/lucide';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { formatLessonDuration, useLessonResultsStore } from '@/state/lesson-resu
 import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { useSessionStore } from '@/state/sessionStore';
+import { feedback } from '@/services/feedback';
 
 export default function LessonResultsScreen() {
   const router = useRouter();
@@ -20,15 +21,23 @@ export default function LessonResultsScreen() {
   const goalHydrated = useLearningGoalStore((state) => state.hasHydrated);
   const goalCommitted = useLearningGoalStore((state) => state.isCommitted);
   const plan = useSessionStore((state) => state.user?.plan ?? 'free');
+  const hasPlayedCompletionFeedback = useRef(false);
 
   useEffect(() => {
     if (hasHydrated && !summary) router.replace('/lessons/first' as never);
   }, [hasHydrated, router, summary]);
 
+  useEffect(() => {
+    if (!summary || hasPlayedCompletionFeedback.current) return;
+    hasPlayedCompletionFeedback.current = true;
+    feedback.play('lessonComplete');
+  }, [summary]);
+
   if (!hasHydrated || !summary) return null;
   const setupReady = onboardingHydrated && goalHydrated;
 
   const continueAfterResults = () => {
+    feedback.play('buttonTap');
     if (!onboardingCompleted || !goalCommitted) {
       router.replace('/learning-goal' as never);
       return;

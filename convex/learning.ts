@@ -2,7 +2,7 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { sha256 } from '@oslojs/crypto/sha2';
 import { encodeHexLowerCase } from '@oslojs/encoding';
 import { makeFunctionReference } from 'convex/server';
-import { v } from 'convex/values';
+import { ConvexError, v } from 'convex/values';
 
 import { action, internalMutation, mutation, query } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -58,7 +58,7 @@ async function requireGuest(
     .withIndex('by_learner_id', (q) => q.eq('learnerId', learnerId))
     .unique();
   if (!learner || learner.credentialHash !== credentialHash(credential)) {
-    throw new Error('INVALID_LEARNER_CREDENTIAL');
+    throw new ConvexError({ code: 'INVALID_LEARNER_CREDENTIAL' });
   }
   if (!learner.anonymous || learner.userId) throw new Error('LEARNER_ALREADY_MERGED');
   return { ownerType: 'learner', learnerSessionId: learner._id };
@@ -617,6 +617,24 @@ export const createGuestSession = action({
   },
 });
 
+export const validateGuestSession = query({
+  args: { learnerId: v.string(), credential: v.string() },
+  handler: async (ctx, args) => {
+    const learner = await ctx.db
+      .query('learnerSessions')
+      .withIndex('by_learner_id', (q) => q.eq('learnerId', args.learnerId))
+      .unique();
+    return {
+      valid: Boolean(
+        learner
+        && learner.credentialHash === credentialHash(args.credential)
+        && learner.anonymous
+        && !learner.userId,
+      ),
+    };
+  },
+});
+
 export const startAuthenticatedAttempt = mutation({
   args: { lessonKey: v.string(), clientAttemptKey: v.string() },
   handler: async (ctx, args) => startAttempt(ctx, await requireUser(ctx), args.lessonKey, args.clientAttemptKey),
@@ -714,7 +732,9 @@ export const mergeGuestProgress = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const learner = await ctx.db.query('learnerSessions').withIndex('by_learner_id', (q) => q.eq('learnerId', args.learnerId)).unique();
-    if (!learner || learner.credentialHash !== credentialHash(args.credential)) throw new Error('INVALID_LEARNER_CREDENTIAL');
+    if (!learner || learner.credentialHash !== credentialHash(args.credential)) {
+      throw new ConvexError({ code: 'INVALID_LEARNER_CREDENTIAL' });
+    }
     if (learner.userId) {
       if (learner.userId !== user.userId) throw new Error('LEARNER_ALREADY_CLAIMED');
       return { merged: false, alreadyMerged: true };

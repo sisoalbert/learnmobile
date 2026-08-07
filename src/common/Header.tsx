@@ -3,6 +3,8 @@ import { Pressable, View, StyleSheet, ViewStyle } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Lucide } from '@react-native-vector-icons/lucide';
 
+import { feedback } from '@/services/feedback';
+
 interface HeaderProps {
   onBack?: () => void;
   showBack?: boolean;
@@ -19,6 +21,7 @@ export default function Header({
   const router = useRouter();
 
   const handleBack = () => {
+    feedback.play('buttonTap');
     if (onBack) {
       onBack();
       return;
@@ -48,6 +51,7 @@ export default function Header({
           <Pressable
             accessibilityLabel="Open profile settings"
             accessibilityRole="button"
+            onPress={() => feedback.play('buttonTap')}
             style={styles.headerButton}
           >
             <Lucide name="settings" size={24} color="#AFAFAF" />

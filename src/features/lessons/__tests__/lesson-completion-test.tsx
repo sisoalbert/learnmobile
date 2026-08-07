@@ -6,6 +6,7 @@ import { useLessonResultsStore } from '@/state/lesson-results-store';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { useSessionStore } from '@/state/sessionStore';
+import { feedback } from '@/services/feedback';
 
 const mockReplace = jest.fn();
 
@@ -14,6 +15,8 @@ jest.mock('expo-router', () => ({
 }));
 
 describe('lesson completion flow', () => {
+  const feedbackPlay = jest.spyOn(feedback, 'play').mockImplementation(() => undefined);
+
   beforeEach(() => {
     jest.clearAllMocks();
     useLessonResultsStore.setState({
@@ -55,10 +58,13 @@ describe('lesson completion flow', () => {
     expect(screen.getByText('23')).toBeTruthy();
     expect(screen.getByText('93%')).toBeTruthy();
     expect(screen.getByText('2:49')).toBeTruthy();
+    screen.rerender(<LessonResultsScreen />);
+    expect(feedbackPlay.mock.calls.filter(([event]) => event === 'lessonComplete')).toHaveLength(1);
 
     fireEvent.press(screen.getByText('Claim XP'));
 
     expect(mockReplace).toHaveBeenCalledWith('/learning-goal');
+    expect(feedbackPlay).toHaveBeenCalledWith('buttonTap');
   });
 
   test('sends returning free learners into the ad flow', () => {

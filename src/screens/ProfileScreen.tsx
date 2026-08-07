@@ -7,6 +7,7 @@ import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
+import { feedback } from '@/services/feedback';
 import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
 import { useSessionStore } from '@/state/sessionStore';
 import { api } from '../../convex/_generated/api';
@@ -39,6 +40,7 @@ export default function ProfileScreen({
   const handleSignOut = async () => {
     if (isAccountActionPending) return;
 
+    feedback.play('buttonTap');
     setIsSigningOut(true);
 
     try {
@@ -116,6 +118,7 @@ export default function ProfileScreen({
   const handleDeleteAccount = () => {
     if (isAccountActionPending) return;
 
+    feedback.play('buttonTap');
     if (Platform.OS === 'web') {
       if (window.confirm(`${DELETE_ACCOUNT_TITLE}\n\n${DELETE_ACCOUNT_MESSAGE}`)) {
         void deleteAccount();
@@ -200,7 +203,10 @@ export default function ProfileScreen({
               styles.actionButton,
               pressed && styles.actionButtonPressed,
             ]}
-            onPress={() => router.push('/signin')}
+            onPress={() => {
+              feedback.play('buttonTap');
+              router.push('/signin');
+            }}
           >
             <Text style={styles.actionText}>sign in</Text>
           </Pressable>

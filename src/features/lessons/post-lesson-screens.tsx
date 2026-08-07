@@ -2,7 +2,7 @@ import { Lucide, type LucideIconName } from '@react-native-vector-icons/lucide';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useConvexAuth, useMutation } from 'convex/react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,9 @@ import { useLearnerRewardsStore } from '@/state/learner-rewards-store';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
 import { useLessonResultsStore } from '@/state/lesson-results-store';
 import { QuestProgressCard } from '@/features/quests/quest-progress-card';
+import { isInvalidLearnerCredential } from '@/features/learning-session/guest-session-errors';
+import { feedback } from '@/services/feedback';
+import WelcomeAnimation from '@/common/WelcomeAnimation';
 import { api } from '../../../convex/_generated/api';
 import { buildUtcWeekDays } from './utc-week';
 
@@ -38,6 +41,7 @@ function PostLessonShell({
   primaryDisabled = false,
   secondaryLabel,
   onSecondaryPress,
+  mascotElement,
 }: {
   eyebrow: string;
   title: string;
@@ -48,6 +52,7 @@ function PostLessonShell({
   primaryDisabled?: boolean;
   secondaryLabel?: string;
   onSecondaryPress?: () => void;
+  mascotElement?: ReactNode;
 }) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -59,12 +64,14 @@ function PostLessonShell({
         <View style={styles.stage}>
           <Text selectable style={styles.eyebrow}>{eyebrow}</Text>
           <Animated.View entering={ZoomIn.duration(260)} style={styles.mascotHalo}>
-            <Image
-              accessibilityLabel="Rex, the Learn Expo guide"
-              contentFit="contain"
-              source={require('../../../assets/logo.png')}
-              style={styles.mascot}
-            />
+            {mascotElement ?? (
+              <Image
+                accessibilityLabel="Rex, the Learn Expo guide"
+                contentFit="contain"
+                source={require('../../../assets/logo.png')}
+                style={styles.mascot}
+              />
+            )}
           </Animated.View>
           <Animated.View entering={FadeInUp.delay(100).duration(260)} style={styles.copy}>
             <Text selectable style={styles.title}>{title}</Text>
@@ -79,7 +86,10 @@ function PostLessonShell({
               accessibilityRole="button"
               accessibilityState={{ disabled: primaryDisabled }}
               disabled={primaryDisabled}
-              onPress={onPrimaryPress}
+              onPress={() => {
+                feedback.play('buttonTap');
+                onPrimaryPress();
+              }}
               style={({ pressed }) => [
                 styles.primaryButton,
                 primaryDisabled && styles.buttonDisabled,
@@ -89,7 +99,10 @@ function PostLessonShell({
               <Text selectable style={styles.primaryButtonText}>{primaryLabel}</Text>
             </Pressable>
             {secondaryLabel && onSecondaryPress ? (
-              <Pressable accessibilityRole="button" onPress={onSecondaryPress} style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryPressed]}>
+              <Pressable accessibilityRole="button" onPress={() => {
+                feedback.play('buttonTap');
+                onSecondaryPress();
+              }} style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryPressed]}>
                 <Text selectable style={styles.secondaryButtonText}>{secondaryLabel}</Text>
               </Pressable>
             ) : null}
@@ -139,6 +152,7 @@ export function PostLessonPremiumScreen() {
       onPrimaryPress={continueFlow}
       secondaryLabel="Not now"
       onSecondaryPress={continueFlow}
+      mascotElement={<WelcomeAnimation style={{ width: 140, height: 140 }} />}
     >
       <View style={styles.benefitList}>
         <Benefit icon="badge-check" text="Ad-free lessons" />
@@ -161,6 +175,13 @@ function Benefit({ icon, text }: { icon: LucideIconName; text: string }) {
 export function PostLessonStreakIncreaseScreen() {
   const router = useRouter();
   const summary = usePostLessonSummary();
+  const hasPlayedStreakFeedback = useRef(false);
+
+  useEffect(() => {
+    if (!summary || hasPlayedStreakFeedback.current) return;
+    hasPlayedStreakFeedback.current = true;
+    feedback.play('streakIncrease');
+  }, [summary]);
 
   useEffect(() => {
     if (!summary) return;
@@ -222,9 +243,11 @@ export function PostLessonMonthlyQuestScreen() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const learner = useLearnerSessionStore((state) => state.session);
   const learnerHydrated = useLearnerSessionStore((state) => state.hasHydrated);
+  const clearLearnerSession = useLearnerSessionStore((state) => state.clearSession);
   const claimAuthenticated = useMutation(api.learning.claimAuthenticatedLessonReward);
   const claimGuest = useMutation(api.learning.claimGuestLessonReward);
   const setClaimedReward = useLessonResultsStore((state) => state.setClaimedReward);
+  const resetLesson = useLessonResultsStore((state) => state.resetLesson);
   const setGemBalance = useLearnerRewardsStore((state) => state.setGemBalance);
   const [isClaiming, setIsClaiming] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -254,7 +277,13 @@ export function PostLessonMonthlyQuestScreen() {
       setGemBalance(result.totalGems);
       setClaimedReward(result);
       router.replace('/lessons/reward');
-    } catch {
+    } catch (error) {
+      if (isInvalidLearnerCredential(error)) {
+        resetLesson();
+        clearLearnerSession();
+        router.replace('/home');
+        return;
+      }
       setErrorMessage('Unable to open your chest. Your reward is safe—please try again.');
     } finally {
       setIsClaiming(false);
@@ -286,6 +315,7 @@ export function PostLessonMonthlyQuestScreen() {
 export function PostLessonRewardScreen() {
   const router = useRouter();
   const summary = usePostLessonSummary();
+  const hasPlayedRewardFeedback = useRef(false);
   const claimedReward = useLessonResultsStore((state) => state.claimedReward);
   const resetLesson = useLessonResultsStore((state) => state.resetLesson);
   const gemBalance = useLearnerRewardsStore((state) => state.gems);
@@ -298,6 +328,12 @@ export function PostLessonRewardScreen() {
   useEffect(() => {
     if (claimedReward) setGemBalance(claimedReward.totalGems);
   }, [claimedReward, setGemBalance]);
+
+  useEffect(() => {
+    if (!summary || !claimedReward || hasPlayedRewardFeedback.current) return;
+    hasPlayedRewardFeedback.current = true;
+    feedback.play('rewardEarned');
+  }, [claimedReward, summary]);
 
   if (!summary || !claimedReward) return null;
 

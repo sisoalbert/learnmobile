@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useOnboardingStore } from '@/state/onboarding-store';
+import { feedback } from '@/services/feedback';
 import { useSessionStore } from '@/state/sessionStore';
 
 export default function WelcomeScreen() {
@@ -15,6 +16,7 @@ export default function WelcomeScreen() {
   const handleGetStarted = () => {
     if (!hasHydrated) return;
 
+    feedback.play('buttonTap');
     continueAsGuest();
     if (isOnboardingCompleted) {
       router.replace('/home');

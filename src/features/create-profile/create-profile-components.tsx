@@ -15,6 +15,8 @@ import {
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { feedback, type FeedbackEvent } from '@/services/feedback';
+
 const COLORS = {
   blue: '#2289FD',
   blueDark: '#1A6ECE',
@@ -36,8 +38,10 @@ type FormShellProps = PropsWithChildren<{
   progress?: number;
   primaryLabel: string;
   primaryDisabled?: boolean;
+  primaryFeedback?: FeedbackEvent;
   onPrimaryPress: () => void;
   secondaryLabel?: string;
+  secondaryFeedback?: FeedbackEvent;
   onSecondaryPress?: () => void;
   legal?: boolean;
   onTermsPress?: () => void;
@@ -52,8 +56,10 @@ export function CreateProfileShell({
   progress,
   primaryLabel,
   primaryDisabled = false,
+  primaryFeedback = 'buttonTap',
   onPrimaryPress,
   secondaryLabel,
+  secondaryFeedback = 'buttonTap',
   onSecondaryPress,
   legal = false,
   onTermsPress,
@@ -109,7 +115,10 @@ export function CreateProfileShell({
               accessibilityRole="button"
               accessibilityState={{ disabled: primaryDisabled }}
               disabled={primaryDisabled}
-              onPress={onPrimaryPress}
+              onPress={() => {
+                feedback.play(primaryFeedback);
+                onPrimaryPress();
+              }}
               style={({ pressed }) => [
                 styles.primaryButton,
                 primaryDisabled && styles.primaryButtonDisabled,
@@ -123,7 +132,10 @@ export function CreateProfileShell({
               <Pressable
                 accessibilityRole="button"
                 hitSlop={10}
-                onPress={onSecondaryPress}
+                onPress={() => {
+                  feedback.play(secondaryFeedback);
+                  onSecondaryPress();
+                }}
                 style={({ pressed }) => [styles.secondaryButton, pressed && styles.controlPressed]}
               >
                 <Text selectable style={styles.secondaryButtonText}>{secondaryLabel}</Text>

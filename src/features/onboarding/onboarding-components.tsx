@@ -16,6 +16,7 @@ import type {
   OnboardingHeaderMode,
   OnboardingOption,
 } from '@/features/onboarding/onboarding-content';
+import { feedback, type FeedbackEvent } from '@/services/feedback';
 
 const COLORS = {
   blue: '#2289FD',
@@ -37,6 +38,7 @@ type OnboardingShellProps = PropsWithChildren<{
   onBack: () => void;
   ctaLabel?: string;
   ctaDisabled?: boolean;
+  ctaFeedback?: FeedbackEvent;
   onContinue?: () => void;
 }>;
 
@@ -48,6 +50,7 @@ export function OnboardingShell({
   onBack,
   ctaLabel,
   ctaDisabled = false,
+  ctaFeedback = 'buttonTap',
   onContinue,
 }: OnboardingShellProps) {
   return (
@@ -75,7 +78,10 @@ export function OnboardingShell({
               accessibilityRole="button"
               accessibilityState={{ disabled: ctaDisabled }}
               disabled={ctaDisabled}
-              onPress={onContinue}
+              onPress={() => {
+                feedback.play(ctaFeedback);
+                onContinue();
+              }}
               style={({ pressed }) => [
                 styles.primaryButton,
                 ctaDisabled && styles.primaryButtonDisabled,
@@ -180,7 +186,10 @@ export function OptionCard<T extends string | number>({
     <Pressable
       accessibilityRole={multiple ? 'checkbox' : 'radio'}
       accessibilityState={{ checked: selected }}
-      onPress={() => onPress(option.value)}
+      onPress={() => {
+        feedback.play('optionSelected');
+        onPress(option.value);
+      }}
       style={({ pressed }) => [
         styles.optionCard,
         selected && styles.optionCardSelected,
@@ -285,7 +294,10 @@ export function ReminderChoice({
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
-      onPress={() => onPress(value)}
+      onPress={() => {
+        feedback.play('optionSelected');
+        onPress(value);
+      }}
       style={({ pressed }) => [
         styles.reminderChoice,
         selected && styles.reminderChoiceSelected,

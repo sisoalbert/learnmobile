@@ -6,6 +6,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { feedback } from '@/services/feedback';
 import { RenderNodePreview } from './code-preview';
 import { QUESTION_COLORS } from './question-constants';
 import type { CodeFile, RenderNode, RuleOutcome } from './questions.types';
@@ -32,7 +33,10 @@ export function SelectionCard({
       accessibilityRole={multiple ? 'checkbox' : 'radio'}
       accessibilityState={{ checked: selected, disabled }}
       disabled={disabled}
-      onPress={onPress}
+      onPress={() => {
+        feedback.play('buttonTap');
+        onPress();
+      }}
       style={({ pressed }) => [styles.selectionCard, selected && styles.selectionCardSelected, pressed && styles.pressed, style]}
     >
       <View style={[styles.selectionControl, multiple && styles.checkbox, selected && styles.selectionControlSelected]}>
@@ -59,7 +63,10 @@ export function CodeCard({ code, selectedLines = [], onLinePress }: { code: stri
           </View>
         );
         return onLinePress ? (
-          <Pressable key={lineNumber} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => onLinePress(lineNumber)}>
+          <Pressable key={lineNumber} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => {
+            feedback.play('buttonTap');
+            onLinePress(lineNumber);
+          }}>
             {content}
           </Pressable>
         ) : <React.Fragment key={lineNumber}>{content}</React.Fragment>;
@@ -219,7 +226,10 @@ export function DraggableChip({
   return (
     <GestureDetector gesture={gesture} touchAction="pan-y">
       <Animated.View style={animatedStyle}>
-        <Pressable accessibilityRole="button" accessibilityState={{ selected, disabled }} disabled={disabled} onPress={onPress} style={[styles.chip, selected && styles.chipSelected]}>
+        <Pressable accessibilityRole="button" accessibilityState={{ selected, disabled }} disabled={disabled} onPress={() => {
+          feedback.play('buttonTap');
+          onPress();
+        }} style={[styles.chip, selected && styles.chipSelected]}>
           <Text selectable style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
         </Pressable>
       </Animated.View>
@@ -229,7 +239,10 @@ export function DraggableChip({
 
 export function IconButton({ label, icon, disabled, onPress }: { label: string; icon: LucideIconName; disabled?: boolean; onPress: () => void }) {
   return (
-    <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} hitSlop={6} onPress={onPress} style={({ pressed }) => [styles.iconButton, disabled && styles.iconButtonDisabled, pressed && styles.pressed]}>
+    <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} hitSlop={6} onPress={() => {
+      feedback.play('buttonTap');
+      onPress();
+    }} style={({ pressed }) => [styles.iconButton, disabled && styles.iconButtonDisabled, pressed && styles.pressed]}>
       <Lucide name={icon} size={17} color={disabled ? '#C5C8CF' : QUESTION_COLORS.muted} />
     </Pressable>
   );
@@ -245,7 +258,10 @@ export function CodeFilesEditor({ files, disabled, onChange }: { files: CodeFile
       {files.length > 1 ? (
         <View style={styles.fileTabs}>
           {files.map((file) => (
-            <Pressable key={file.path} accessibilityRole="tab" accessibilityState={{ selected: file.path === active.path }} onPress={() => setActivePath(file.path)} style={[styles.fileTab, file.path === active.path && styles.fileTabActive]}>
+            <Pressable key={file.path} accessibilityRole="tab" accessibilityState={{ selected: file.path === active.path }} onPress={() => {
+              feedback.play('buttonTap');
+              setActivePath(file.path);
+            }} style={[styles.fileTab, file.path === active.path && styles.fileTabActive]}>
               <Text selectable style={[styles.fileTabText, file.path === active.path && styles.fileTabTextActive]}>{file.path}</Text>
             </Pressable>
           ))}

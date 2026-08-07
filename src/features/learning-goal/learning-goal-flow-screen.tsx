@@ -64,6 +64,7 @@ export default function LearningGoalFlowScreen() {
     return (
       <LearningGoalShell
         primaryDisabled={selectedGoal === null}
+        primaryFeedback="commitmentConfirmed"
         primaryLabel="Commit to my goal"
         onPrimaryPress={() => {
           commitGoal();

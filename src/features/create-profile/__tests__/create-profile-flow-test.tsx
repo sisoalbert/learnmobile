@@ -4,6 +4,7 @@ import { useSessionStore } from '@/state/sessionStore';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { useUserProfileStore } from '@/state/user-profile-store';
+import { feedback } from '@/services/feedback';
 
 import CreateProfileFlowScreen from '../create-profile-flow-screen';
 
@@ -30,6 +31,8 @@ jest.mock('expo-router', () => ({
 }));
 
 describe('create-profile flow', () => {
+  const feedbackPlay = jest.spyOn(feedback, 'play').mockImplementation(() => undefined);
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockSignIn.mockResolvedValue({ signingIn: true });
@@ -117,8 +120,10 @@ describe('create-profile flow', () => {
     fireEvent.changeText(screen.getByPlaceholderText('Last name'), 'Lee');
     expect(screen.getByRole('button', { name: 'Next' }).props.accessibilityState).toEqual({ disabled: false });
 
+    feedbackPlay.mockClear();
     fireEvent.press(screen.getByLabelText('Go back'));
     expect(screen.getByPlaceholderText('Age').props.value).toBe('25');
+    expect(feedbackPlay).not.toHaveBeenCalled();
   });
 
   test('shows an email correction and accepts the suggestion', () => {
@@ -181,6 +186,7 @@ describe('create-profile flow', () => {
         firstName: 'Sam',
         lastName: 'Lee',
       });
+      expect(feedbackPlay).toHaveBeenCalledWith('profileCreated');
     });
 
     expect(useSessionStore.getState()).toMatchObject({

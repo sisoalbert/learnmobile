@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
+import { isInvalidLearnerCredential } from '@/features/learning-session/guest-session-errors';
 import { QuestionTypeScreen } from '@/features/questions/question-type-screen';
 import type { LocalQuestionResult, Question, QuestionAnswer } from '@/features/questions/questions.types';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
@@ -22,12 +23,14 @@ export function BackendLessonScreen({ lessonKey }: { lessonKey: string }) {
   const lesson = useQuery(api.content.getLesson, { lessonKey });
   const learnerSession = useLearnerSessionStore((state) => state.session);
   const hasLearnerHydrated = useLearnerSessionStore((state) => state.hasHydrated);
+  const clearLearnerSession = useLearnerSessionStore((state) => state.clearSession);
   const hasResultsHydrated = useLessonResultsStore((state) => state.hasHydrated);
   const currentQuestionIndex = useLessonResultsStore((state) => state.currentQuestionIndex);
   const startBackendLesson = useLessonResultsStore((state) => state.startBackendLesson);
   const recordResult = useLessonResultsStore((state) => state.recordResult);
   const advanceQuestion = useLessonResultsStore((state) => state.advanceQuestion);
   const setServerSummary = useLessonResultsStore((state) => state.setServerSummary);
+  const resetLesson = useLessonResultsStore((state) => state.resetLesson);
   const startAuthenticated = useMutation(api.learning.startAuthenticatedAttempt);
   const startGuest = useMutation(api.learning.startGuestAttempt);
   const submitAuthenticated = useMutation(api.learning.submitAuthenticatedExercise);
@@ -61,10 +64,17 @@ export function BackendLessonScreen({ lessonKey }: { lessonKey: string }) {
     void request.then((result) => {
       if (active) setAttemptId(result.attemptId);
     }).catch((error) => {
-      if (active) setStartError(error instanceof Error ? error.message : 'Unable to start this lesson.');
+      if (!active) return;
+      if (isInvalidLearnerCredential(error)) {
+        resetLesson();
+        clearLearnerSession();
+        router.replace('/home');
+        return;
+      }
+      setStartError('Unable to start this lesson. Check your connection and try again.');
     });
     return () => { active = false; };
-  }, [attemptId, authLoading, hasLearnerHydrated, isAuthenticated, learnerSession, lesson, startAuthenticated, startGuest]);
+  }, [attemptId, authLoading, clearLearnerSession, hasLearnerHydrated, isAuthenticated, learnerSession, lesson, resetLesson, router, startAuthenticated, startGuest]);
 
   useEffect(() => {
     questionStartedAt.current = Date.now();
@@ -85,10 +95,20 @@ export function BackendLessonScreen({ lessonKey }: { lessonKey: string }) {
       idempotencyKey: uniqueKey(`${attemptId}:${exercise.key}`),
       responseTimeMs: Math.max(0, Date.now() - questionStartedAt.current),
     };
-    const result = isAuthenticated
-      ? await submitAuthenticated(common)
-      : await submitGuest({ ...learnerSession!, ...common });
-    return result as unknown as LocalQuestionResult;
+    try {
+      const result = isAuthenticated
+        ? await submitAuthenticated(common)
+        : await submitGuest({ ...learnerSession!, ...common });
+      return result as unknown as LocalQuestionResult;
+    } catch (error) {
+      if (isInvalidLearnerCredential(error)) {
+        resetLesson();
+        clearLearnerSession();
+        router.replace('/home');
+        throw new Error('Restoring your learning session…');
+      }
+      throw new Error('Unable to check this answer. Check your connection and try again.');
+    }
   };
 
   const continueLesson = async () => {
@@ -97,11 +117,21 @@ export function BackendLessonScreen({ lessonKey }: { lessonKey: string }) {
       advanceQuestion(nextIndex);
       return;
     }
-    const result = isAuthenticated
-      ? await completeAuthenticated({ attemptId })
-      : await completeGuest({ ...learnerSession!, attemptId });
-    setServerSummary(result as LessonSummary);
-    router.replace('/lessons/results' as never);
+    try {
+      const result = isAuthenticated
+        ? await completeAuthenticated({ attemptId })
+        : await completeGuest({ ...learnerSession!, attemptId });
+      setServerSummary(result as LessonSummary);
+      router.replace('/lessons/results' as never);
+    } catch (error) {
+      if (isInvalidLearnerCredential(error)) {
+        resetLesson();
+        clearLearnerSession();
+        router.replace('/home');
+        return;
+      }
+      setStartError('Unable to finish this lesson. Check your connection and try again.');
+    }
   };
 
   return (

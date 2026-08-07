@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 import * as Updates from 'expo-updates';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Lucide } from '@react-native-vector-icons/lucide';
@@ -17,6 +17,7 @@ import {
   STARTING_POINTS,
 } from '@/features/onboarding/onboarding-content';
 import { useOnboardingStore } from '@/state/onboarding-store';
+import { feedback, useFeedbackPreferencesStore } from '@/services/feedback';
 
 type SelectionItem = {
   id: string;
@@ -32,14 +33,48 @@ const findLabel = <T extends string | number>(
 export default function SettingsScreen() {
   const router = useRouter();
   const onboarding = useOnboardingStore();
+  const soundEffectsEnabled = useFeedbackPreferencesStore(
+    (state) => state.soundEffectsEnabled,
+  );
+  const hapticFeedbackEnabled = useFeedbackPreferencesStore(
+    (state) => state.hapticFeedbackEnabled,
+  );
+  const setSoundEffectsEnabled = useFeedbackPreferencesStore(
+    (state) => state.setSoundEffectsEnabled,
+  );
+  const setHapticFeedbackEnabled = useFeedbackPreferencesStore(
+    (state) => state.setHapticFeedbackEnabled,
+  );
   const [isCheckingForUpdate, setIsCheckingForUpdate] = useState(false);
 
   const handleReset = () => {
+    feedback.play('buttonTap');
     onboarding.resetOnboarding();
     router.replace('/');
   };
 
+  const handleSoundEffectsChange = (enabled: boolean) => {
+    if (enabled) {
+      setSoundEffectsEnabled(true);
+      feedback.play('buttonTap');
+      return;
+    }
+    feedback.play('buttonTap');
+    setSoundEffectsEnabled(false);
+  };
+
+  const handleHapticFeedbackChange = (enabled: boolean) => {
+    if (enabled) {
+      setHapticFeedbackEnabled(true);
+      feedback.play('buttonTap');
+      return;
+    }
+    feedback.play('buttonTap');
+    setHapticFeedbackEnabled(false);
+  };
+
   const handleCheckForUpdates = async () => {
+    feedback.play('buttonTap');
     if (!Updates.isEnabled) {
       Alert.alert(
         'Updates unavailable',
@@ -180,6 +215,52 @@ export default function SettingsScreen() {
         }
         ListFooterComponent={
           <View style={styles.footer}>
+            <View style={styles.preferencesSection}>
+              <View style={styles.updateHeading}>
+                <Text selectable style={styles.updateTitle}>
+                  Feedback
+                </Text>
+                <Text selectable style={styles.updateDescription}>
+                  Choose how Learn Expo responds to your interactions.
+                </Text>
+              </View>
+              <View style={styles.preferenceRow}>
+                <View style={styles.preferenceCopy}>
+                  <Text nativeID="sound-effects-label" selectable style={styles.preferenceLabel}>
+                    Sound effects
+                  </Text>
+                  <Text selectable style={styles.preferenceDescription}>
+                    Play taps, answer cues, and celebrations.
+                  </Text>
+                </View>
+                <Switch
+                  accessibilityLabel="Sound effects"
+                  accessibilityState={{ checked: soundEffectsEnabled }}
+                  onValueChange={handleSoundEffectsChange}
+                  trackColor={{ false: '#C9CDD5', true: '#8BCBEE' }}
+                  thumbColor={soundEffectsEnabled ? '#1899D6' : '#FFFFFF'}
+                  value={soundEffectsEnabled}
+                />
+              </View>
+              <View style={styles.preferenceRow}>
+                <View style={styles.preferenceCopy}>
+                  <Text nativeID="haptic-feedback-label" selectable style={styles.preferenceLabel}>
+                    Haptic feedback
+                  </Text>
+                  <Text selectable style={styles.preferenceDescription}>
+                    Use supported device vibration and haptics.
+                  </Text>
+                </View>
+                <Switch
+                  accessibilityLabel="Haptic feedback"
+                  accessibilityState={{ checked: hapticFeedbackEnabled }}
+                  onValueChange={handleHapticFeedbackChange}
+                  trackColor={{ false: '#C9CDD5', true: '#8BCBEE' }}
+                  thumbColor={hapticFeedbackEnabled ? '#1899D6' : '#FFFFFF'}
+                  value={hapticFeedbackEnabled}
+                />
+              </View>
+            </View>
             <View style={styles.updateSection}>
               <View style={styles.updateHeading}>
                 <Text selectable style={styles.updateTitle}>
@@ -300,6 +381,31 @@ const styles = StyleSheet.create({
   },
   updateSection: {
     gap: 12,
+  },
+  preferencesSection: {
+    gap: 14,
+  },
+  preferenceRow: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 18,
+    paddingVertical: 8,
+  },
+  preferenceCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  preferenceLabel: {
+    color: '#2D2D2D',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  preferenceDescription: {
+    color: '#737373',
+    fontSize: 13,
+    lineHeight: 18,
   },
   updateHeading: {
     gap: 5,

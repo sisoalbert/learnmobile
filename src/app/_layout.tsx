@@ -1,13 +1,14 @@
 import { ConvexAuthProvider, useConvexAuth } from '@convex-dev/auth/react';
-import { ConvexReactClient, useAction, useMutation, useQuery } from 'convex/react';
+import { ConvexReactClient, useMutation, useQuery } from 'convex/react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { authTokenStorage } from '@/auth/token-storage';
+import { GuestSessionGate } from '@/features/learning-session/guest-session-gate';
+import { feedback } from '@/services/feedback';
 import { useSessionStore } from '@/state/sessionStore';
-import { useLearnerSessionStore } from '@/state/learner-session-store';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { useUserProfileStore } from '@/state/user-profile-store';
@@ -70,7 +71,7 @@ function AuthenticatedAppNavigator() {
     !isLoading && convexAuthenticated ? {} : 'skip',
   );
 
-  useLearningBootstrap({ authenticated: convexAuthenticated, loading: isLoading });
+  useContentBootstrap();
 
   useEffect(() => {
     if (isLoading) return;
@@ -105,45 +106,28 @@ function AuthenticatedAppNavigator() {
     }
   }, [clearLocalSession, convexAuthenticated, currentUser, hydrateCommittedGoal, hydrateProfile, isLoading, markOnboardingCompleted, setAuthenticatedUser]);
 
-  return <AppNavigator />;
+  return (
+    <GuestSessionGate authenticated={convexAuthenticated} loading={isLoading}>
+      <AppNavigator />
+    </GuestSessionGate>
+  );
 }
 
-function useLearningBootstrap({ authenticated, loading }: { authenticated: boolean; loading: boolean }) {
-  const hasHydrated = useLearnerSessionStore((state) => state.hasHydrated);
-  const learnerSession = useLearnerSessionStore((state) => state.session);
-  const setLearnerSession = useLearnerSessionStore((state) => state.setSession);
-  const clearLearnerSession = useLearnerSessionStore((state) => state.clearSession);
+function useContentBootstrap() {
   const courses = useQuery(api.content.listPublishedCourses);
   const ensureSeeded = useMutation(api.content.ensureSeeded);
-  const createGuestSession = useAction(api.learning.createGuestSession);
-  const mergeGuestProgress = useMutation(api.learning.mergeGuestProgress);
 
   useEffect(() => {
     if (courses?.length === 0) void ensureSeeded({});
   }, [courses, ensureSeeded]);
-
-  useEffect(() => {
-    if (!hasHydrated || loading || authenticated || learnerSession) return;
-    let active = true;
-    void createGuestSession({}).then((created) => {
-      if (active) setLearnerSession(created);
-    });
-    return () => { active = false; };
-  }, [authenticated, createGuestSession, hasHydrated, learnerSession, loading, setLearnerSession]);
-
-  useEffect(() => {
-    if (!authenticated || !learnerSession) return;
-    let active = true;
-    void mergeGuestProgress(learnerSession).then(() => {
-      if (active) clearLearnerSession();
-    }).catch((error) => {
-      Sentry.captureException(error, { tags: { area: 'learning', operation: 'merge_guest_progress' } });
-    });
-    return () => { active = false; };
-  }, [authenticated, clearLearnerSession, learnerSession, mergeGuestProgress]);
 }
 
 function AppNavigator() {
+  useEffect(() => {
+    feedback.initialize();
+    return () => feedback.dispose();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack

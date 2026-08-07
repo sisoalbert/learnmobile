@@ -1,6 +1,6 @@
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { BackHandler, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
 
 import {
   CenteredStep,
@@ -105,6 +105,7 @@ export default function OnboardingScreen() {
       onBack={handleBack}
       ctaLabel={step.ctaLabel}
       ctaDisabled={!hasRequiredAnswer(step.requiredAnswer, state)}
+      ctaFeedback={step.id === 'lesson-transition' ? 'onboardingComplete' : 'buttonTap'}
       onContinue={handleContinue}
     >
       <StepContent stepId={step.id} title={step.title} body={step.body} state={state} />

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { StreakGoal } from '@/state/learning-goal-store';
 import type { UtcWeekDay } from '@/features/lessons/utc-week';
+import { feedback, type FeedbackEvent } from '@/services/feedback';
 
 export type { StreakGoal } from '@/state/learning-goal-store';
 
@@ -28,6 +29,7 @@ type LearningGoalShellProps = PropsWithChildren<{
   primaryLabel: string;
   onPrimaryPress: () => void;
   primaryDisabled?: boolean;
+  primaryFeedback?: FeedbackEvent;
   secondaryLabel?: string;
   onSecondaryPress?: () => void;
 }>;
@@ -37,6 +39,7 @@ export function LearningGoalShell({
   primaryLabel,
   onPrimaryPress,
   primaryDisabled = false,
+  primaryFeedback = 'buttonTap',
   secondaryLabel,
   onSecondaryPress,
 }: LearningGoalShellProps) {
@@ -56,7 +59,10 @@ export function LearningGoalShell({
             accessibilityRole="button"
             accessibilityState={{ disabled: primaryDisabled }}
             disabled={primaryDisabled}
-            onPress={onPrimaryPress}
+            onPress={() => {
+              feedback.play(primaryFeedback);
+              onPrimaryPress();
+            }}
             style={({ pressed }) => [
               styles.primaryButton,
               primaryDisabled && styles.primaryButtonDisabled,
@@ -70,7 +76,10 @@ export function LearningGoalShell({
             <Pressable
               accessibilityRole="button"
               hitSlop={10}
-              onPress={onSecondaryPress}
+              onPress={() => {
+                feedback.play('buttonTap');
+                onSecondaryPress();
+              }}
               style={({ pressed }) => [styles.secondaryButton, pressed && styles.controlPressed]}
             >
               <Text selectable style={styles.secondaryButtonText}>{secondaryLabel}</Text>
@@ -222,7 +231,10 @@ export function StreakGoalSelectionStep({
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
               key={goal.days}
-              onPress={() => onSelectGoal(goal.days)}
+              onPress={() => {
+                feedback.play('optionSelected');
+                onSelectGoal(goal.days);
+              }}
               style={({ pressed }) => [
                 styles.goalCard,
                 selected && styles.goalCardSelected,
