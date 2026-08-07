@@ -20,29 +20,33 @@
 - [x] `expo-status-bar`
 
 ## Backend and Realtime Data
-- [ ] `convex`
+- [x] `convex`
 
 ## Authentication
 - [ ] `@clerk/clerk-expo`
-- [ ] `expo-secure-store`
-- [ ] `@convex-dev/auth`
+- [x] `expo-secure-store`
+- [x] `@convex-dev/auth`
+- [x] `@auth/core`
+- [x] `@oslojs/crypto`
+- [x] `resend`
 
 ## Images, Mascot, and Static Assets
 - [x] `expo-image`
 - [ ] `expo-asset`
 
 ## Audio & Video
-- [ ] `expo-audio`
+- [x] `expo-audio`
 - [ ] `expo-speech`
 - [ ] `expo-file-system`
 - [ ] `expo-video`
 - [ ] `expo-av` (deprecated; use `expo-audio` & `expo-video`)
 
 ## Interaction Feedback and Animation
-- [ ] `expo-haptics`
+- [x] `expo-haptics`
 - [x] `react-native-reanimated`
 - [x] `react-native-gesture-handler`
 - [x] `lottie-react-native` (`expo-lottie`)
+- [x] `lottie-web`
 
 ## Notifications & Device
 - [ ] `expo-notifications`
@@ -58,7 +62,7 @@
 ## Persistent Local State & State Management
 - [x] `zustand`
 - [x] `@react-native-async-storage/async-storage`
-- [ ] `expo-secure-store`
+- [x] `expo-secure-store`
 - [ ] `expo-sqlite`
 
 ## Forms and Validation
@@ -67,8 +71,18 @@
 - [ ] `@hookform/resolvers`
 
 ## UI Utilities
-- [ ] `react-native-svg`
+- [x] `react-native-svg`
 - [x] `@react-native-vector-icons/lucide`
+- [x] `@expo/ui`
+- [x] `expo-glass-effect`
+- [x] `expo-symbols`
+
+## System & Infrastructure
+- [x] `expo-dev-client`
+- [x] `expo-splash-screen`
+- [x] `expo-system-ui`
+- [x] `expo-updates`
+- [x] `expo-web-browser`
 
 ## Data and Date Utilities
 - [ ] `date-fns`
@@ -82,9 +96,9 @@
 - [x] `@sentry/react-native`
 
 ## Testing
-- [ ] `jest`
-- [ ] `jest-expo`
-- [ ] `@testing-library/react-native`
+- [x] `jest`
+- [x] `jest-expo`
+- [x] `@testing-library/react-native`
 - [ ] `@testing-library/jest-native`
 
 ## Code Quality
@@ -96,3 +110,4 @@
 
 ## Web Deployment
 - [x] `wrangler`
+

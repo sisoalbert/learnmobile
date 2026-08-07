@@ -108,7 +108,7 @@ npx expo install expo-secure-store
 
 ### Option B — Convex Auth
 
-- [ ] `@convex-dev/auth`
+- [x] `@convex-dev/auth`
   - Authentication implemented directly with Convex.
 
 ```bash
@@ -118,7 +118,7 @@ npm install @convex-dev/auth
 ### Decision
 
 - [ ] Select Clerk
-- [ ] Select Convex Auth
+- [x] Select Convex Auth
 - [ ] Configure authenticated Convex provider
 - [ ] Add `convex/auth.config.ts`
 - [ ] Add development and production authentication environment variables
@@ -131,7 +131,7 @@ npm install @convex-dev/auth
 - [x] `expo-image`
   - Efficient image rendering, caching, transitions, and mascot illustrations.
 
-- [x] `expo-asset`
+- [ ] `expo-asset`
   - Bundled asset loading and local asset references.
 
 ### Install
@@ -150,7 +150,7 @@ npx expo install expo-image expo-asset
 - [ ] `expo-speech`
   - Text-to-speech for pronunciation, accessibility, or generated lesson prompts.
 
-- [x] `expo-file-system`
+- [ ] `expo-file-system`
   - Audio downloads, local caching, persistent recording files, and cache cleanup.
 
 ### Install
@@ -204,7 +204,7 @@ npx expo install   expo-haptics   react-native-reanimated   react-native-gesture
 
 ### Optional Mascot Animation
 
-- [ ] `lottie-react-native`
+- [x] `lottie-react-native`
   - Lightweight predefined mascot and celebration animations.
 
 ```bash
@@ -218,7 +218,7 @@ npx expo install lottie-react-native
 - [ ] `expo-notifications`
   - Daily-goal reminders, streak reminders, quest updates, and learning notifications.
 
-- [ ] `expo-device`
+- [x] `expo-device`
   - Checks whether push notification registration is running on a physical device and provides device information.
 
 ### Install when notifications are implemented
@@ -297,13 +297,13 @@ npx expo install expo-sqlite
 
 Recommended for sign-up, sign-in, profile, goal setup, and settings forms.
 
-- [x] `react-hook-form`
+- [ ] `react-hook-form`
   - Form state and field validation.
 
-- [x] `zod`
+- [ ] `zod`
   - Shared TypeScript-friendly validation schemas.
 
-- [x] `@hookform/resolvers`
+- [ ] `@hookform/resolvers`
   - Connects Zod schemas to React Hook Form.
 
 ### Install
@@ -322,7 +322,7 @@ npm install react-hook-form zod @hookform/resolvers
 - [x] `@react-native-vector-icons/lucide`
   - Lucide vector icon set for user interface elements.
 
-- [x] `@expo/vector-icons`
+- [ ] `@expo/vector-icons`
   - General-purpose interface icons. Included in standard Expo templates, but verify it is available.
 
 ### Install or verify
@@ -344,10 +344,10 @@ Choose one approach rather than installing several competing systems.
 
 ## 14. Data and Date Utilities
 
-- [x] `date-fns`
+- [ ] `date-fns`
   - Date calculations and display formatting.
 
-- [x] `date-fns-tz`
+- [ ] `date-fns-tz`
   - User-local streak and daily-goal date handling with IANA time zones.
 
 ### Install
@@ -396,7 +396,7 @@ Select providers before beta testing.
 
 ### Error Reporting
 
-- [ ] `@sentry/react-native`
+- [x] `@sentry/react-native`
   - Crash reporting, errors, traces, and release diagnostics.
 
 ### Sentry Install
@@ -437,7 +437,7 @@ npx expo install @sentry/react-native
 - [x] `@testing-library/react-native`
   - Component and interaction testing.
 
-- [x] `@testing-library/jest-native`
+- [ ] `@testing-library/jest-native`
   - React Native-specific test matchers where compatible with the selected testing setup.
 
 ### Install
@@ -465,7 +465,7 @@ Maestro is the simpler default for the initial product.
 - [x] `eslint-config-expo`
   - Expo-compatible lint configuration.
 
-- [x] `prettier`
+- [ ] `prettier`
   - Consistent formatting.
 
 ### Install
@@ -586,34 +586,36 @@ The original proposed list contained duplicates and one deprecated package.
 - [x] Expo and React Native
 - [x] Expo Router
 - [x] Convex
-- [x] One authentication solution
+- [x] One authentication solution (Convex Auth)
 - [x] Expo Image
-- [x] Expo Asset
 - [x] Expo Audio
-- [x] Expo FileSystem
 - [x] Expo Haptics
 - [x] Reanimated
 - [x] Gesture Handler
 - [x] React Native SVG
 - [x] Async Storage
 - [x] Secure Store
-- [x] Forms and validation
-- [x] Date and timezone utilities
+- [x] Expo Fonts (`expo-font`)
+- [x] Expo Device (`expo-device`)
+- [x] Lottie (`lottie-react-native`)
+- [x] Sentry (`@sentry/react-native`)
 - [x] Testing and linting
 
 ### Deferred
 
+- [ ] Expo Asset
+- [ ] Expo FileSystem
+- [ ] Forms and validation (`react-hook-form`, `zod`, `@hookform/resolvers`)
+- [ ] Date and timezone utilities (`date-fns`, `date-fns-tz`)
+- [ ] Prettier
+- [ ] `@testing-library/jest-native`
 - [ ] Expo Speech
 - [ ] Expo Video
 - [ ] Expo Notifications
-- [ ] Expo Device
 - [ ] Expo Calendar
 - [ ] Expo Sharing
 - [ ] Expo SQLite
-- [ ] Lottie
 - [ ] In-app purchases
 - [ ] Admob
 - [ ] Analytics provider
-- [ ] Sentry
 - [ ] End-to-end testing framework
-- [ ] Expo fonts
