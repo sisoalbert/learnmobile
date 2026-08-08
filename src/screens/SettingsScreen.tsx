@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
+import { useAuthActions } from '@convex-dev/auth/react';
 import * as Sentry from '@sentry/react-native';
+import { useConvexAuth, useMutation } from 'convex/react';
 import * as Updates from 'expo-updates';
 import { Alert, FlatList, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +20,9 @@ import {
 } from '@/features/onboarding/onboarding-content';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { feedback, useFeedbackPreferencesStore } from '@/services/feedback';
+import { disableStoredDevice } from '@/services/notifications/push-notification-manager';
+import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
+import { api } from '../../convex/_generated/api';
 
 type SelectionItem = {
   id: string;
@@ -33,6 +38,9 @@ const findLabel = <T extends string | number>(
 export default function SettingsScreen() {
   const router = useRouter();
   const onboarding = useOnboardingStore();
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut: signOutFromConvex } = useAuthActions();
+  const disableDevice = useMutation(api.notifications.disableDevice);
   const soundEffectsEnabled = useFeedbackPreferencesStore(
     (state) => state.soundEffectsEnabled,
   );
@@ -47,9 +55,44 @@ export default function SettingsScreen() {
   );
   const [isCheckingForUpdate, setIsCheckingForUpdate] = useState(false);
 
-  const handleReset = () => {
+  const handleReset = async () => {
     feedback.play('buttonTap');
-    onboarding.resetOnboarding();
+
+    if (isAuthenticated) {
+      try {
+        await disableStoredDevice(disableDevice);
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: {
+            area: 'notifications',
+            operation: 'disable_device_before_reset',
+          },
+        });
+      }
+
+      try {
+        await signOutFromConvex();
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: {
+            area: 'auth',
+            operation: 'sign_out_on_reset',
+          },
+        });
+      }
+    }
+
+    try {
+      await clearAllZustandStores();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          area: 'storage',
+          operation: 'clear_stores_on_reset',
+        },
+      });
+    }
+
     router.replace('/');
   };
 
@@ -292,12 +335,12 @@ export default function SettingsScreen() {
             {onboarding.hasHydrated ? (
               <View style={styles.resetSection}>
                 <Text selectable style={styles.resetDescription}>
-                  This will clear your onboarding data and return you to the Welcome screen.
+                  This will clear all local data, sign you out, and return you to the Welcome screen.
                 </Text>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Reset onboarding data"
-                  onPress={handleReset}
+                  onPress={() => void handleReset()}
                   style={({ pressed }) => [
                     styles.resetButton,
                     pressed && styles.resetButtonPressed,

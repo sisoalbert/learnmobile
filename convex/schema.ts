@@ -289,4 +289,36 @@ export default defineSchema({
     .index('by_leaderboard_xp', ['leaderboardId', 'xp'])
     .index('by_leaderboard_user', ['leaderboardId', 'userId'])
     .index('by_user', ['userId']),
+  devices: defineTable({
+    userId: v.id('users'),
+    installationId: v.string(),
+    platform: v.union(v.literal('ios'), v.literal('android')),
+    expoPushToken: v.optional(v.string()),
+    pushEnabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastSeenAt: v.optional(v.number()),
+    disabledAt: v.optional(v.number()),
+  })
+    .index('by_installation', ['installationId'])
+    .index('by_push_token', ['expoPushToken'])
+    .index('by_user', ['userId'])
+    .index('by_user_push_enabled', ['userId', 'pushEnabled']),
+  pushNotificationDeliveries: defineTable({
+    userId: v.id('users'),
+    lessonAttemptId: v.id('lessonAttempts'),
+    deviceId: v.id('devices'),
+    ticketId: v.optional(v.string()),
+    status: v.union(
+      v.literal('ticketed'),
+      v.literal('provider_accepted'),
+      v.literal('failed'),
+    ),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_attempt', ['lessonAttemptId'])
+    .index('by_ticket', ['ticketId']),
 });

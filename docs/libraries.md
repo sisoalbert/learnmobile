@@ -49,8 +49,9 @@
 - [x] `lottie-web`
 
 ## Notifications & Device
-- [ ] `expo-notifications`
+- [x] `expo-notifications`
 - [x] `expo-device`
+- [ ] `@react-native-community/netinfo`
 
 ## Calendar, Sensors & Additional Features
 - [ ] `expo-calendar`
@@ -78,6 +79,10 @@
 - [x] `expo-symbols`
 
 ## System & Infrastructure
+- [x] `eas-cli`
+- [x] `eas.json`
+- [x] `.easignore`
+- [x] `google-services.json` (`expo.android.googleServicesFile`)
 - [x] `expo-dev-client`
 - [x] `expo-splash-screen`
 - [x] `expo-system-ui`

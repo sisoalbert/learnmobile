@@ -343,8 +343,8 @@ export function NotificationCard({ children }: PropsWithChildren) {
         <Text style={styles.notificationTitle}>“Learn Expo” Would Like to Send You Notifications</Text>
       </View>
       <Text style={styles.notificationDescription}>
-        Notifications may include learning reminders and progress updates. You can change this
-        preference later in Settings.
+        Notifications may include learning reminders and progress updates. You can change access
+        later in your device settings.
       </Text>
       <View style={styles.notificationActions}>{children}</View>
     </View>

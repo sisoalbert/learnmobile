@@ -125,6 +125,8 @@ export const deleteCurrent = mutation({
       ctx.db.query('subscriptions').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
       ctx.db.query('leaderboardEntries').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
       ctx.db.query('learnerSessions').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
+      ctx.db.query('pushNotificationDeliveries').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
+      ctx.db.query('devices').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
     ]);
 
     for (const records of learningRecords) {

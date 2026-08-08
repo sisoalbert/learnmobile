@@ -15,6 +15,7 @@ import type * as emails from "../emails.js";
 import type * as http from "../http.js";
 import type * as learning from "../learning.js";
 import type * as learningValidators from "../learningValidators.js";
+import type * as notifications from "../notifications.js";
 import type * as onboarding from "../onboarding.js";
 import type * as passwordReset from "../passwordReset.js";
 import type * as tasks from "../tasks.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   learning: typeof learning;
   learningValidators: typeof learningValidators;
+  notifications: typeof notifications;
   onboarding: typeof onboarding;
   passwordReset: typeof passwordReset;
   tasks: typeof tasks;

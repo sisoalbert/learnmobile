@@ -1,4 +1,4 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Learn more https://docs.expo.dev/build-reference/easignore/
 
 # dependencies
 node_modules/
@@ -53,5 +53,10 @@ assets/generated
 # Local agent skills
 /.agents/skills/
 /skills-lock.json
-google-services.json
-service-key.json
+
+# Ignore unnecessary files/directories for EAS Build
+/docs
+/coverage
+
+# Include files ignored by git that EAS Build requires
+!google-services.json

@@ -17,15 +17,21 @@ import {
 } from '@/features/home';
 import { useLearnerRewardsStore } from '@/state/learner-rewards-store';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
+import { useHomePushNotificationRegistration } from '@/services/notifications/push-notification-manager';
 
 export default function HomeScreen() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const learner = useLearnerSessionStore((state) => state.session);
   const courses = useQuery(api.content.listPublishedCourses);
+  const currentUser = useQuery(api.users.current, isAuthenticated ? {} : 'skip');
   const authenticatedProgress = useQuery(api.learning.getAuthenticatedProgress, isAuthenticated ? {} : 'skip');
   const guestProgress = useQuery(api.learning.getGuestProgress, !isAuthenticated && learner ? learner : 'skip');
   const learning = isAuthenticated ? authenticatedProgress : guestProgress;
   const setGemBalance = useLearnerRewardsStore((state) => state.setGemBalance);
+  useHomePushNotificationRegistration(
+    Boolean(isAuthenticated && currentUser),
+    currentUser?.onboarding?.reminderPreference,
+  );
   const selectedCourse = selectCurrentCourse(
     (courses ?? []) as PublishedCourse[],
     (learning?.progress ?? []) as CourseProgress[],

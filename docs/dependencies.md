@@ -213,31 +213,38 @@ npx expo install lottie-react-native
 
 ---
 
-## 9. Notifications
+## 9. Notifications, Device & Network
 
-- [ ] `expo-notifications`
+- [x] `expo-notifications`
   - Daily-goal reminders, streak reminders, quest updates, and learning notifications.
 
 - [x] `expo-device`
   - Checks whether push notification registration is running on a physical device and provides device information.
 
-### Install when notifications are implemented
+- [ ] `@react-native-community/netinfo`
+  - Network connection status, offline state detection, and network reachability monitoring.
+
+### Install when needed
 
 ```bash
-npx expo install expo-notifications expo-device
+npx expo install expo-notifications expo-device @react-native-community/netinfo
 ```
 
 ### Configuration Checklist
 
-- [ ] Configure the `expo-notifications` app-config plugin
+- [x] Configure the `expo-notifications` app-config plugin
 - [ ] Add Android notification icon and color
-- [ ] Add iOS notification permission description
+- [x] Confirm iOS notification permission requires no usage description
 - [ ] Configure EAS credentials
-- [ ] Store Expo push tokens in Convex
-- [ ] Handle token refresh
-- [ ] Add notification preferences
-- [ ] Add notification deep links
+- [x] Store per-installation devices and rotating Expo push tokens in Convex
+- [x] Handle token refresh
+- [x] Add notification preferences
+- [x] Add notification deep links
 - [ ] Test on physical Android and iOS devices
+
+The Convex notification actions require `EXPO_PUSH_ACCESS_TOKEN` as a server-only environment
+variable. Configure it independently on development and production deployments; never expose it
+through an `EXPO_PUBLIC_*` variable.
 
 ---
 
@@ -485,11 +492,13 @@ npm install --save-dev husky lint-staged
 
 ---
 
-## 19. Environment Configuration
+## 19. Environment & Build Configuration
 
 - [x] Expo public environment variables for non-secret client configuration
 - [x] Convex environment variables for backend secrets
 - [x] Separate development, preview, and production values
+- [x] Android Firebase configuration via `google-services.json` in `app.json` (`expo.android.googleServicesFile`)
+- [x] `.easignore` configuration to ignore unnecessary build assets (`/docs`, `/coverage`) and explicitly include `!google-services.json` for EAS Build uploads
 
 ### Required Variables
 
@@ -546,6 +555,7 @@ Then install exactly one authentication stack.
 | Animated feedback and mascot states | `react-native-reanimated` |
 | Progress rings and custom paths | `react-native-svg` |
 | Push reminders | `expo-notifications`, `expo-device` |
+| Network status / offline detection | `@react-native-community/netinfo` |
 | Video lessons | `expo-video` |
 | Calendar study sessions | `expo-calendar` |
 | Achievement sharing | `expo-sharing` |
@@ -599,6 +609,8 @@ The original proposed list contained duplicates and one deprecated package.
 - [x] Expo Device (`expo-device`)
 - [x] Lottie (`lottie-react-native`)
 - [x] Sentry (`@sentry/react-native`)
+- [x] EAS Build & `.easignore` configuration
+- [x] Android `google-services.json` (`expo.android.googleServicesFile`)
 - [x] Testing and linting
 
 ### Deferred
@@ -612,6 +624,7 @@ The original proposed list contained duplicates and one deprecated package.
 - [ ] Expo Speech
 - [ ] Expo Video
 - [ ] Expo Notifications
+- [ ] `@react-native-community/netinfo`
 - [ ] Expo Calendar
 - [ ] Expo Sharing
 - [ ] Expo SQLite

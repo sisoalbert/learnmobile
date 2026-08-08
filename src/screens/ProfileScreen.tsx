@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
 import { feedback } from '@/services/feedback';
+import { disableStoredDevice } from '@/services/notifications/push-notification-manager';
 import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
 import { useSessionStore } from '@/state/sessionStore';
 import { api } from '../../convex/_generated/api';
@@ -29,7 +30,12 @@ export default function ProfileScreen({
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const currentUser = useQuery(api.users.current, isAuthenticated ? {} : 'skip');
+  const developmentDevices = useQuery(
+    api.notifications.currentDevices,
+    __DEV__ && isAuthenticated ? {} : 'skip',
+  );
   const deleteCurrentUser = useMutation(api.users.deleteCurrent);
+  const disableDevice = useMutation(api.notifications.disableDevice);
   const isAccountActionPending = isSigningOut || isDeletingAccount;
 
   const accountDescription =
@@ -42,6 +48,17 @@ export default function ProfileScreen({
 
     feedback.play('buttonTap');
     setIsSigningOut(true);
+
+    try {
+      await disableStoredDevice(disableDevice);
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          area: 'notifications',
+          operation: 'disable_device_before_sign_out',
+        },
+      });
+    }
 
     try {
       await signOutFromConvex();
@@ -75,6 +92,17 @@ export default function ProfileScreen({
     if (isAccountActionPending) return;
 
     setIsDeletingAccount(true);
+
+    try {
+      await disableStoredDevice(disableDevice);
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          area: 'notifications',
+          operation: 'disable_device_before_account_delete',
+        },
+      });
+    }
 
     try {
       await deleteCurrentUser({});
@@ -156,6 +184,21 @@ export default function ProfileScreen({
               @{username} · {plan} plan
             </Text>
           ) : null}
+          {__DEV__ && isAuthenticated ? (
+            <View style={styles.developmentPanel}>
+              <Text style={styles.developmentTitle}>Expo push tokens · development</Text>
+              {Array.isArray(developmentDevices) && developmentDevices.length > 0 ? (
+                developmentDevices.map((device) => (
+                  <View key={device.deviceId} style={styles.deviceToken}>
+                    <Text style={styles.devicePlatform}>{device.platform}</Text>
+                    <Text selectable style={styles.tokenText}>{device.expoPushToken}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyTokenText}>No active Expo push token</Text>
+              )}
+            </View>
+          ) : null}
         </View>
 
         {isAuthenticated ? (
@@ -234,7 +277,9 @@ const styles = StyleSheet.create({
     paddingBottom: 56,
   },
   accountDetails: {
+    flex: 1,
     gap: 10,
+    paddingRight: 24,
   },
   accountActions: {
     alignItems: 'center',
@@ -253,6 +298,41 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontSize: 14,
     textTransform: 'lowercase',
+  },
+  developmentPanel: {
+    maxWidth: 360,
+    marginTop: 16,
+    padding: 12,
+    gap: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#CCCCCC',
+    borderRadius: 8,
+    backgroundColor: '#F7F7F7',
+  },
+  developmentTitle: {
+    color: '#555555',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  deviceToken: {
+    gap: 4,
+  },
+  devicePlatform: {
+    color: '#666666',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  tokenText: {
+    color: '#111111',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  emptyTokenText: {
+    color: '#777777',
+    fontSize: 12,
   },
   actionButton: {
     minHeight: 44,

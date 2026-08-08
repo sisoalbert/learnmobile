@@ -45,6 +45,30 @@ jest.mock('expo-haptics', () => ({
   selectionAsync: jest.fn(() => Promise.resolve()),
 }));
 
+jest.mock('expo-notifications', () => ({
+  AndroidImportance: { HIGH: 4 },
+  IosAuthorizationStatus: {
+    AUTHORIZED: 2,
+    PROVISIONAL: 3,
+    EPHEMERAL: 4,
+  },
+  PermissionStatus: { DENIED: 'denied' },
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addPushTokenListener: jest.fn(() => ({ remove: jest.fn() })),
+  clearLastNotificationResponseAsync: jest.fn(() => Promise.resolve()),
+  getExpoPushTokenAsync: jest.fn(() => Promise.resolve({ data: 'ExpoPushToken[test]' })),
+  getLastNotificationResponse: jest.fn(() => null),
+  getPermissionsAsync: jest.fn(() => Promise.resolve({ granted: false, status: 'undetermined' })),
+  requestPermissionsAsync: jest.fn(() => Promise.resolve({ granted: true, status: 'granted' })),
+  setNotificationChannelAsync: jest.fn(() => Promise.resolve()),
+  setNotificationHandler: jest.fn(),
+}));
+
+jest.mock('expo-device', () => ({
+  isDevice: true,
+}));
+
 jest.mock('react-native-reanimated', () => {
   const { ScrollView, Text, View } = jest.requireActual('react-native');
   const animation = {

@@ -22,6 +22,11 @@ const createGuestSessionInternalRef = makeFunctionReference<
   { learnerId: string; credentialHash: string },
   Id<'learnerSessions'>
 >('learning:createGuestSessionInternal');
+const sendLessonCompletedNotificationRef = makeFunctionReference<
+  'action',
+  { userId: Id<'users'>; attemptId: Id<'lessonAttempts'> },
+  null
+>('notifications:sendLessonCompleted');
 
 type Owner =
   | { ownerType: 'user'; userId: Id<'users'>; learnerSessionId?: undefined }
@@ -525,6 +530,13 @@ async function completeAttempt(ctx: MutationCtx, owner: Owner, attemptId: Id<'le
   await awardLessonCompletion(ctx, owner, attempt._id, dateKey, accuracyPercent, firstLessonToday);
   if (owner.ownerType === 'user') await ctx.db.patch(owner.userId, { lastActiveAt: timestamp });
   else await ctx.db.patch(owner.learnerSessionId, { lastSeenAt: timestamp });
+
+  if (owner.ownerType === 'user') {
+    await ctx.scheduler.runAfter(0, sendLessonCompletedNotificationRef, {
+      userId: owner.userId,
+      attemptId: attempt._id,
+    });
+  }
 
   const [completedAttempt, updatedProgress] = await Promise.all([
     ctx.db.get(attempt._id),

@@ -15,6 +15,11 @@ const mockDeleteCurrentUser = jest.fn();
 const mockSignOutFromConvex = jest.fn();
 const mockReplace = jest.fn();
 const mockCaptureException = jest.fn();
+const mockDevelopmentDevices = [{
+  deviceId: 'device-id',
+  platform: 'ios',
+  expoPushToken: 'ExpoPushToken[development-token]',
+}];
 
 jest.mock('@convex-dev/auth/react', () => ({
   useAuthActions: () => ({ signOut: mockSignOutFromConvex }),
@@ -24,10 +29,17 @@ jest.mock('@sentry/react-native', () => ({
   captureException: (...args: unknown[]) => mockCaptureException(...args),
 }));
 
-jest.mock('convex/react', () => ({
-  useMutation: () => mockDeleteCurrentUser,
-  useQuery: () => ({ email: 'sam@example.com' }),
-}));
+jest.mock('convex/react', () => {
+  const { getFunctionName } = jest.requireActual('convex/server');
+  return {
+    useMutation: () => mockDeleteCurrentUser,
+    useQuery: (functionReference: unknown) => (
+      getFunctionName(functionReference) === 'notifications:currentDevices'
+        ? mockDevelopmentDevices
+        : { email: 'sam@example.com' }
+    ),
+  };
+});
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace }),
@@ -120,6 +132,13 @@ describe('profile account actions', () => {
 
     expect(screen.getByLabelText('Sign out')).toBeTruthy();
     expect(screen.getByLabelText('Delete account')).toBeTruthy();
+  });
+
+  test('shows the active Expo push token in development', () => {
+    const screen = render(<ProfileScreen name="Profile" />);
+
+    expect(screen.getByText('Expo push tokens · development')).toBeTruthy();
+    expect(screen.getByText('ExpoPushToken[development-token]')).toBeTruthy();
   });
 
   test('signs out and clears every Zustand store', async () => {

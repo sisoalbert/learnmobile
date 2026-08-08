@@ -12,6 +12,10 @@ import { LEARNING_PATHS_BY_LEVEL, isLearningPathLevel } from '../learning-paths'
 const mockPush = jest.fn();
 let mockQueryState: 'loading' | 'ready' | 'unavailable' = 'ready';
 
+jest.mock('@sentry/react-native', () => ({
+  captureException: jest.fn(),
+}));
+
 jest.mock('expo-router', () => {
   const ReactModule = jest.requireActual('react');
   return {
@@ -23,6 +27,7 @@ jest.mock('expo-router', () => {
 
 jest.mock('convex/react', () => ({
   useConvexAuth: () => ({ isAuthenticated: false, isLoading: false }),
+  useMutation: () => jest.fn(),
   useQuery: (_reference: unknown, args?: unknown) => {
     if (args === 'skip') return undefined;
     if (args === undefined && mockQueryState === 'loading') return undefined;

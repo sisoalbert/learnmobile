@@ -8,6 +8,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { authTokenStorage } from '@/auth/token-storage';
 import { GuestSessionGate } from '@/features/learning-session/guest-session-gate';
 import { feedback } from '@/services/feedback';
+import {
+  usePushNotificationObserver,
+} from '@/services/notifications/push-notification-manager';
 import { useSessionStore } from '@/state/sessionStore';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useOnboardingStore } from '@/state/onboarding-store';
@@ -123,6 +126,8 @@ function useContentBootstrap() {
 }
 
 function AppNavigator() {
+  usePushNotificationObserver();
+
   useEffect(() => {
     feedback.initialize();
     return () => feedback.dispose();
