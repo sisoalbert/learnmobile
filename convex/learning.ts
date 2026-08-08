@@ -65,7 +65,7 @@ async function requireGuest(
   if (!learner || learner.credentialHash !== credentialHash(credential)) {
     throw new ConvexError({ code: 'INVALID_LEARNER_CREDENTIAL' });
   }
-  if (!learner.anonymous || learner.userId) throw new Error('LEARNER_ALREADY_MERGED');
+  if (!learner.anonymous || learner.userId) throw new ConvexError({ code: 'LEARNER_ALREADY_MERGED' });
   return { ownerType: 'learner', learnerSessionId: learner._id };
 }
 
@@ -720,7 +720,14 @@ export const getAuthenticatedProgress = query({
 export const getGuestProgress = query({
   args: { learnerId: v.string(), credential: v.string() },
   handler: async (ctx, args) => {
-    const owner = await requireGuest(ctx, args.learnerId, args.credential);
+    const learner = await ctx.db
+      .query('learnerSessions')
+      .withIndex('by_learner_id', (q) => q.eq('learnerId', args.learnerId))
+      .unique();
+    if (!learner || learner.credentialHash !== credentialHash(args.credential) || !learner.anonymous || learner.userId) {
+      return null;
+    }
+    const owner: Owner = { ownerType: 'learner', learnerSessionId: learner._id };
     const progress = await ctx.db.query('userCourseProgress').withIndex('by_learner_course', (q) => q.eq('learnerSessionId', owner.learnerSessionId)).collect();
     const monthKey = monthKeyForDate(new Date().toISOString().slice(0, 10));
     const [streakDays, wallet, monthlyQuest, monthlyActivityDateKeys] = await Promise.all([

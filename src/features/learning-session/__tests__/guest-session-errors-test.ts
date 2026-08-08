@@ -7,11 +7,17 @@ describe('guest session errors', () => {
     expect(isInvalidLearnerCredential(
       new ConvexError({ code: 'INVALID_LEARNER_CREDENTIAL' }),
     )).toBe(true);
+    expect(isInvalidLearnerCredential(
+      new ConvexError({ code: 'LEARNER_ALREADY_MERGED' }),
+    )).toBe(true);
   });
 
   test('recognizes legacy server messages during rollout', () => {
     expect(isInvalidLearnerCredential(
       new Error('[CONVEX] Uncaught Error: INVALID_LEARNER_CREDENTIAL'),
+    )).toBe(true);
+    expect(isInvalidLearnerCredential(
+      new Error('[CONVEX] Uncaught Error: LEARNER_ALREADY_MERGED'),
     )).toBe(true);
   });
 
@@ -20,3 +26,4 @@ describe('guest session errors', () => {
     expect(isInvalidLearnerCredential(new ConvexError({ code: 'UNAUTHENTICATED' }))).toBe(false);
   });
 });
+
