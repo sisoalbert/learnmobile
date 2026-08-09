@@ -13,7 +13,10 @@ import { useLessonResultsStore } from '@/state/lesson-results-store';
 import { QuestProgressCard } from '@/features/quests/quest-progress-card';
 import { isInvalidLearnerCredential } from '@/features/learning-session/guest-session-errors';
 import { feedback } from '@/services/feedback';
+import { showInterstitialAd } from '@/services/ads';
+import { WebInterstitialCard } from '@/services/ads/web-ad-components';
 import WelcomeAnimation from '@/common/WelcomeAnimation';
+import { useSessionStore } from '@/state/sessionStore';
 import { api } from '../../../convex/_generated/api';
 import { buildUtcWeekDays } from './utc-week';
 
@@ -116,15 +119,49 @@ function PostLessonShell({
 export function PostLessonAdScreen() {
   const router = useRouter();
   const summary = usePostLessonSummary();
+  const plan = useSessionStore((state) => state.user?.plan ?? 'free');
+  const hasStartedInterstitial = useRef(false);
+  const isWeb = process.env.EXPO_OS === 'web';
+
+  useEffect(() => {
+    if (!summary || hasStartedInterstitial.current) return;
+    hasStartedInterstitial.current = true;
+
+    if (plan === 'premium') {
+      router.replace('/lessons/streak-increase');
+      return;
+    }
+
+    if (isWeb) return;
+
+    void showInterstitialAd().catch(() => undefined).finally(() => {
+      router.replace('/lessons/premium');
+    });
+  }, [isWeb, plan, router, summary]);
+
   if (!summary) return null;
+
+  if (isWeb) {
+    return (
+      <PostLessonShell
+        eyebrow="A QUICK BREAK"
+        title="Keep learning without interruptions"
+        subtitle="Upgrade to Pro for an ad-free learning experience."
+        primaryLabel="Subscribe to Pro"
+        onPrimaryPress={() => router.push('/subscription')}
+        secondaryLabel="Continue learning"
+        onSecondaryPress={() => router.replace('/lessons/streak-increase')}
+      >
+        <WebInterstitialCard />
+      </PostLessonShell>
+    );
+  }
 
   return (
     <PostLessonShell
-      eyebrow="SPONSORED BREAK · PLACEHOLDER"
+      eyebrow="SPONSORED BREAK"
       title="A quick break"
-      subtitle="This illustrated screen reserves the interstitial slot while Learn Expo keeps practice free."
-      primaryLabel="Continue"
-      onPrimaryPress={() => router.replace('/lessons/premium')}
+      subtitle="Your next step will open shortly."
     >
       <View style={styles.promoCard}>
         <View style={styles.promoIcon}><Lucide name="volume-2" size={24} color="#2289FD" /></View>

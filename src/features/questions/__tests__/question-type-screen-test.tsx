@@ -2,14 +2,41 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 
 import { feedback } from '@/services/feedback';
+import { useSessionStore } from '@/state/sessionStore';
 import { QUESTION_FIXTURES_BY_TYPE } from '../question-fixtures';
 import { QuestionTypeScreen } from '../question-type-screen';
 import { parseTemplateLines } from '../question-ui';
 
+jest.mock('@/services/ads', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { View } = require('react-native');
+  return {
+    AdMobBanner: () => React.createElement(View, { accessibilityLabel: 'Test AdMob banner' }),
+  };
+});
+
 describe('QuestionTypeScreen', () => {
   const feedbackPlay = jest.spyOn(feedback, 'play').mockImplementation(() => undefined);
 
-  beforeEach(() => feedbackPlay.mockClear());
+  beforeEach(() => {
+    feedbackPlay.mockClear();
+    useSessionStore.getState().signOut();
+  });
+
+  test('renders a banner for free learners', () => {
+    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} />);
+
+    expect(screen.getByLabelText('Test AdMob banner')).toBeTruthy();
+  });
+
+  test('hides the banner for premium learners', () => {
+    useSessionStore.getState().setAuthenticatedUser({ id: 'premium-user', plan: 'premium' });
+    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} />);
+
+    expect(screen.queryByLabelText('Test AdMob banner')).toBeNull();
+  });
 
   test('preserves code lines and keeps blanks within their source line', () => {
     expect(parseTemplateLines('return (\n  <Text>{{message}}</Text>\n);')).toEqual([

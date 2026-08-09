@@ -15,6 +15,8 @@ import type {
   QuestionAnswer,
 } from './questions.types';
 import { feedback } from '@/services/feedback';
+import { AdMobBanner } from '@/services/ads';
+import { useSessionStore } from '@/state/sessionStore';
 
 export type QuestionTypeScreenProps = {
   question: Question;
@@ -52,6 +54,7 @@ function QuestionTypeScreenContent({
   const [attempts, setAttempts] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState('');
+  const plan = useSessionStore((state) => state.user?.plan ?? 'free');
   const meta = QUESTION_TYPE_META[question.type];
   const invalidInitialAnswer = !answerMatchesQuestion(question, initialAnswer);
 
@@ -181,6 +184,8 @@ function QuestionTypeScreenContent({
           {submissionError ? <Text accessibilityRole="alert" selectable style={styles.submissionError}>{submissionError}</Text> : null}
           <View style={styles.bottomSpacer} />
         </ScrollView>
+
+        {plan !== 'premium' ? <AdMobBanner key={question.id} /> : null}
 
         <View style={styles.footer}>
           {result ? (

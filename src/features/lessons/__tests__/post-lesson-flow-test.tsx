@@ -3,8 +3,10 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
 import { useLearnerRewardsStore } from '@/state/learner-rewards-store';
 import { useLessonResultsStore, type LessonSummary } from '@/state/lesson-results-store';
+import { useSessionStore } from '@/state/sessionStore';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import { feedback } from '@/services/feedback';
+import { showInterstitialAd } from '@/services/ads';
 import {
   PostLessonAdScreen,
   PostLessonMonthlyQuestScreen,
@@ -22,12 +24,17 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 
+jest.mock('@/services/ads', () => ({
+  showInterstitialAd: jest.fn(() => Promise.resolve()),
+}));
+
 jest.mock('convex/react', () => ({
   useConvexAuth: () => ({ isAuthenticated: false, isLoading: false }),
   useMutation: () => mockClaimReward,
 }));
 
 const completedAt = Date.parse('2026-08-03T12:00:00Z');
+const mockShowInterstitialAd = showInterstitialAd as jest.MockedFunction<typeof showInterstitialAd>;
 const summary: LessonSummary = {
   attemptId: 'attempt-id' as Id<'lessonAttempts'>,
   lessonId: 'beginner-course-1-lesson-1',
@@ -63,6 +70,7 @@ describe('returning learner post-lesson flow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    useSessionStore.getState().signOut();
     mockClaimReward.mockResolvedValue({ gemsEarned: 12, totalGems: 20, alreadyClaimed: false });
     useLearnerSessionStore.setState({
       hasHydrated: true,
@@ -76,14 +84,32 @@ describe('returning learner post-lesson flow', () => {
     useLearnerRewardsStore.getState().resetRewards();
   });
 
-  test('moves through ad and premium placeholders', () => {
-    const ad = render(<PostLessonAdScreen />);
-    fireEvent.press(ad.getByText('Continue'));
-    expect(mockReplace).toHaveBeenCalledWith('/lessons/premium');
+  test('shows an interstitial and advances after it closes', async () => {
+    render(<PostLessonAdScreen />);
+
+    await waitFor(() => {
+      expect(mockShowInterstitialAd).toHaveBeenCalledTimes(1);
+      expect(mockReplace).toHaveBeenCalledWith('/lessons/premium');
+    });
 
     const premium = render(<PostLessonPremiumScreen />);
     fireEvent.press(premium.getByText('Not now'));
     expect(mockReplace).toHaveBeenCalledWith('/lessons/streak-increase');
+  });
+
+  test('continues when the interstitial fails to load', async () => {
+    mockShowInterstitialAd.mockRejectedValueOnce(new Error('ad unavailable'));
+    render(<PostLessonAdScreen />);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/lessons/premium'));
+  });
+
+  test('bypasses the interstitial for premium learners', async () => {
+    useSessionStore.getState().setAuthenticatedUser({ id: 'premium-user', plan: 'premium' });
+    render(<PostLessonAdScreen />);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/lessons/streak-increase'));
+    expect(mockShowInterstitialAd).not.toHaveBeenCalled();
   });
 
   test('auto-advances from streak intro after the celebration', () => {

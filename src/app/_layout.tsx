@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { authTokenStorage } from '@/auth/token-storage';
 import { GuestSessionGate } from '@/features/learning-session/guest-session-gate';
 import { feedback } from '@/services/feedback';
+import { initializeAdMob } from '@/services/ads';
 import {
   usePushNotificationObserver,
 } from '@/services/notifications/push-notification-manager';
@@ -130,6 +131,7 @@ function AppNavigator() {
 
   useEffect(() => {
     feedback.initialize();
+    void initializeAdMob().catch(() => undefined);
     return () => feedback.dispose();
   }, []);
 
