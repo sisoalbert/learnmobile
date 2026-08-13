@@ -1,4 +1,4 @@
-import { createElement, type ComponentType } from 'react';
+import { createElement } from 'react';
 import Constants from 'expo-constants';
 import mobileAds, {
   AdEventType,
@@ -11,25 +11,10 @@ import { StyleSheet, View } from 'react-native';
 
 import { getAdMobConfig, isProductionAdBuild } from './admob-config';
 
-type NativeAdsModule = {
-  default: () => { initialize: () => Promise<unknown> };
-  AdEventType: { LOADED: string; CLOSED: string; ERROR: string };
-  BannerAd: ComponentType<Record<string, unknown>>;
-  BannerAdSize: { ANCHORED_ADAPTIVE_BANNER: string };
-  InterstitialAd: {
-    createForAdRequest: (unitId: string) => {
-      addAdEventListener: (event: string, listener: () => void) => () => void;
-      load: () => void;
-      show: () => void;
-    };
-  };
-  TestIds: { BANNER: string; INTERSTITIAL: string };
-};
-
-const nativeAds: NativeAdsModule = {
+const nativeAds = {
   default: mobileAds,
   AdEventType,
-  BannerAd: BannerAd as ComponentType<Record<string, unknown>>,
+  BannerAd,
   BannerAdSize,
   InterstitialAd,
   TestIds,

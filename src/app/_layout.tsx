@@ -8,7 +8,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { authTokenStorage } from '@/auth/token-storage';
 import { GuestSessionGate } from '@/features/learning-session/guest-session-gate';
 import { feedback } from '@/services/feedback';
-import { initializeAdMob } from '@/services/ads';
+import {
+  MobileAdsFeatureProvider,
+  type MobileAdsEnabled,
+} from '@/services/ads';
 import {
   usePushNotificationObserver,
 } from '@/services/notifications/push-notification-manager';
@@ -51,7 +54,7 @@ const convex = convexUrl
 
 function RootLayout() {
   if (!convex) {
-    return <AppNavigator />;
+    return <AppNavigator mobileAdsEnabled={false} />;
   }
 
   return (
@@ -74,6 +77,7 @@ function AuthenticatedAppNavigator() {
     api.users.current,
     !isLoading && convexAuthenticated ? {} : 'skip',
   );
+  const mobileAdsEnabled = useQuery(api.featureFlags.getMobileAdsEnabled);
 
   useContentBootstrap();
 
@@ -112,7 +116,7 @@ function AuthenticatedAppNavigator() {
 
   return (
     <GuestSessionGate authenticated={convexAuthenticated} loading={isLoading}>
-      <AppNavigator />
+      <AppNavigator mobileAdsEnabled={mobileAdsEnabled} />
     </GuestSessionGate>
   );
 }
@@ -126,39 +130,40 @@ function useContentBootstrap() {
   }, [courses, ensureSeeded]);
 }
 
-function AppNavigator() {
+function AppNavigator({ mobileAdsEnabled }: { mobileAdsEnabled: MobileAdsEnabled }) {
   usePushNotificationObserver();
 
   useEffect(() => {
     feedback.initialize();
-    void initializeAdMob().catch(() => undefined);
     return () => feedback.dispose();
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="welcome" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="learning-goal" />
-        <Stack.Screen name="create-profile" />
-        <Stack.Screen name="terms" />
-        <Stack.Screen name="privacy" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="todo" />
-        <Stack.Screen name="learning-paths" />
-        <Stack.Screen name="courses/[courseKey]" />
-        <Stack.Screen name="question-types" />
+    <MobileAdsFeatureProvider enabled={mobileAdsEnabled}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="welcome" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="learning-goal" />
+          <Stack.Screen name="create-profile" />
+          <Stack.Screen name="terms" />
+          <Stack.Screen name="privacy" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="todo" />
+          <Stack.Screen name="learning-paths" />
+          <Stack.Screen name="courses/[courseKey]" />
+          <Stack.Screen name="question-types" />
 
-        <Stack.Screen name="signin" />
-        <Stack.Screen name="signup" />
-        <Stack.Screen name="forgot-password" />
-      </Stack>
-    </GestureHandlerRootView>
+          <Stack.Screen name="signin" />
+          <Stack.Screen name="signup" />
+          <Stack.Screen name="forgot-password" />
+        </Stack>
+      </GestureHandlerRootView>
+    </MobileAdsFeatureProvider>
   );
 }

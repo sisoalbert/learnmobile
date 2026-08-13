@@ -7,6 +7,8 @@ import { QUESTION_FIXTURES_BY_TYPE } from '../question-fixtures';
 import { QuestionTypeScreen } from '../question-type-screen';
 import { parseTemplateLines } from '../question-ui';
 
+let mockMobileAdsEnabled: boolean | undefined = true;
+
 jest.mock('@/services/ads', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
@@ -14,6 +16,7 @@ jest.mock('@/services/ads', () => {
   const { View } = require('react-native');
   return {
     AdMobBanner: () => React.createElement(View, { accessibilityLabel: 'Test AdMob banner' }),
+    useMobileAdsEnabled: () => mockMobileAdsEnabled,
   };
 });
 
@@ -22,6 +25,7 @@ describe('QuestionTypeScreen', () => {
 
   beforeEach(() => {
     feedbackPlay.mockClear();
+    mockMobileAdsEnabled = true;
     useSessionStore.getState().signOut();
   });
 
@@ -33,6 +37,13 @@ describe('QuestionTypeScreen', () => {
 
   test('hides the banner for premium learners', () => {
     useSessionStore.getState().setAuthenticatedUser({ id: 'premium-user', plan: 'premium' });
+    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} />);
+
+    expect(screen.queryByLabelText('Test AdMob banner')).toBeNull();
+  });
+
+  test.each([false, undefined])('hides the native banner when the mobile ads flag is %s', (enabled) => {
+    mockMobileAdsEnabled = enabled;
     render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} />);
 
     expect(screen.queryByLabelText('Test AdMob banner')).toBeNull();

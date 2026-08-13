@@ -13,7 +13,7 @@ import { useLessonResultsStore } from '@/state/lesson-results-store';
 import { QuestProgressCard } from '@/features/quests/quest-progress-card';
 import { isInvalidLearnerCredential } from '@/features/learning-session/guest-session-errors';
 import { feedback } from '@/services/feedback';
-import { showInterstitialAd } from '@/services/ads';
+import { showInterstitialAd, useMobileAdsEnabled } from '@/services/ads';
 import { WebInterstitialCard } from '@/services/ads/web-ad-components';
 import WelcomeAnimation from '@/common/WelcomeAnimation';
 import { useSessionStore } from '@/state/sessionStore';
@@ -120,24 +120,33 @@ export function PostLessonAdScreen() {
   const router = useRouter();
   const summary = usePostLessonSummary();
   const plan = useSessionStore((state) => state.user?.plan ?? 'free');
+  const mobileAdsEnabled = useMobileAdsEnabled();
   const hasStartedInterstitial = useRef(false);
   const isWeb = process.env.EXPO_OS === 'web';
 
   useEffect(() => {
     if (!summary || hasStartedInterstitial.current) return;
-    hasStartedInterstitial.current = true;
 
     if (plan === 'premium') {
+      hasStartedInterstitial.current = true;
       router.replace('/lessons/streak-increase');
       return;
     }
 
     if (isWeb) return;
+    if (mobileAdsEnabled === undefined) return;
+
+    hasStartedInterstitial.current = true;
+
+    if (!mobileAdsEnabled) {
+      router.replace('/lessons/premium');
+      return;
+    }
 
     void showInterstitialAd().catch(() => undefined).finally(() => {
       router.replace('/lessons/premium');
     });
-  }, [isWeb, plan, router, summary]);
+  }, [isWeb, mobileAdsEnabled, plan, router, summary]);
 
   if (!summary) return null;
 
@@ -156,6 +165,8 @@ export function PostLessonAdScreen() {
       </PostLessonShell>
     );
   }
+
+  if (plan !== 'premium' && mobileAdsEnabled !== true) return null;
 
   return (
     <PostLessonShell

@@ -38,6 +38,11 @@ export default defineSchema({
     text: v.string(),
     isCompleted: v.boolean(),
   }),
+  featureFlags: defineTable({
+    key: v.string(),
+    enabled: v.boolean(),
+    updatedAt: v.number(),
+  }).index('by_key', ['key']),
   courses: defineTable({
     key: v.string(),
     title: v.string(),

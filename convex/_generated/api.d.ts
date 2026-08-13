@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as content from "../content.js";
 import type * as contentSeed from "../contentSeed.js";
 import type * as emails from "../emails.js";
+import type * as featureFlags from "../featureFlags.js";
 import type * as http from "../http.js";
 import type * as learning from "../learning.js";
 import type * as learningValidators from "../learningValidators.js";
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   content: typeof content;
   contentSeed: typeof contentSeed;
   emails: typeof emails;
+  featureFlags: typeof featureFlags;
   http: typeof http;
   learning: typeof learning;
   learningValidators: typeof learningValidators;

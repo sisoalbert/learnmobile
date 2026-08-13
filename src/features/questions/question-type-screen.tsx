@@ -15,7 +15,7 @@ import type {
   QuestionAnswer,
 } from './questions.types';
 import { feedback } from '@/services/feedback';
-import { AdMobBanner } from '@/services/ads';
+import { AdMobBanner, useMobileAdsEnabled } from '@/services/ads';
 import { useSessionStore } from '@/state/sessionStore';
 
 export type QuestionTypeScreenProps = {
@@ -55,6 +55,8 @@ function QuestionTypeScreenContent({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState('');
   const plan = useSessionStore((state) => state.user?.plan ?? 'free');
+  const mobileAdsEnabled = useMobileAdsEnabled();
+  const shouldShowBanner = process.env.EXPO_OS === 'web' || mobileAdsEnabled === true;
   const meta = QUESTION_TYPE_META[question.type];
   const invalidInitialAnswer = !answerMatchesQuestion(question, initialAnswer);
 
@@ -185,7 +187,7 @@ function QuestionTypeScreenContent({
           <View style={styles.bottomSpacer} />
         </ScrollView>
 
-        {plan !== 'premium' ? <AdMobBanner key={question.id} /> : null}
+        {plan !== 'premium' && shouldShowBanner ? <AdMobBanner key={question.id} /> : null}
 
         <View style={styles.footer}>
           {result ? (

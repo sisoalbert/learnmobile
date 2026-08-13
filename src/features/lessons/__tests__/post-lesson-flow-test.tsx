@@ -19,6 +19,7 @@ import {
 
 const mockReplace = jest.fn();
 const mockClaimReward = jest.fn();
+let mockMobileAdsEnabled: boolean | undefined = true;
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace }),
@@ -26,6 +27,7 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/services/ads', () => ({
   showInterstitialAd: jest.fn(() => Promise.resolve()),
+  useMobileAdsEnabled: () => mockMobileAdsEnabled,
 }));
 
 jest.mock('convex/react', () => ({
@@ -70,6 +72,7 @@ describe('returning learner post-lesson flow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockMobileAdsEnabled = true;
     useSessionStore.getState().signOut();
     mockClaimReward.mockResolvedValue({ gemsEarned: 12, totalGems: 20, alreadyClaimed: false });
     useLearnerSessionStore.setState({
@@ -102,6 +105,30 @@ describe('returning learner post-lesson flow', () => {
     render(<PostLessonAdScreen />);
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/lessons/premium'));
+  });
+
+  test('skips the interstitial when mobile ads are disabled', async () => {
+    mockMobileAdsEnabled = false;
+    render(<PostLessonAdScreen />);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/lessons/premium'));
+    expect(mockShowInterstitialAd).not.toHaveBeenCalled();
+  });
+
+  test('waits for the mobile ads flag before starting the interstitial', async () => {
+    mockMobileAdsEnabled = undefined;
+    const screen = render(<PostLessonAdScreen />);
+
+    await waitFor(() => expect(mockShowInterstitialAd).not.toHaveBeenCalled());
+    expect(mockReplace).not.toHaveBeenCalled();
+
+    mockMobileAdsEnabled = true;
+    screen.rerender(<PostLessonAdScreen />);
+
+    await waitFor(() => {
+      expect(mockShowInterstitialAd).toHaveBeenCalledTimes(1);
+      expect(mockReplace).toHaveBeenCalledWith('/lessons/premium');
+    });
   });
 
   test('bypasses the interstitial for premium learners', async () => {
