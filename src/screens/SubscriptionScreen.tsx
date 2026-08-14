@@ -29,22 +29,24 @@ export default function SubscriptionScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityLabel="Close subscription screen"
-          accessibilityRole="button"
-          onPress={handleClose}
-          style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
-        >
-          <Lucide name="x" size={24} color="#737373" />
-        </Pressable>
-      </View>
+      <View style={styles.page}>
+        <View style={styles.header}>
+          <Pressable
+            accessibilityLabel="Close subscription screen"
+            accessibilityRole="button"
+            onPress={handleClose}
+            style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+          >
+            <Lucide name="x" size={24} color="#737373" />
+          </Pressable>
+        </View>
 
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollView}
+        >
         <View style={styles.heroSection}>
           <View style={styles.animationWrapper}>
             <WelcomeAnimation style={styles.lottieAnimation} />
@@ -125,19 +127,20 @@ export default function SubscriptionScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={handleSubscribe}
-          style={({ pressed }) => [styles.ctaButton, pressed && styles.ctaButtonPressed]}
-        >
-          <Text style={styles.ctaButtonText}>
-            {selectedPlan === 'annual' ? 'START 7-DAY FREE TRIAL' : 'SUBSCRIBE NOW'}
+        <View style={styles.footer}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleSubscribe}
+            style={({ pressed }) => [styles.ctaButton, pressed && styles.ctaButtonPressed]}
+          >
+            <Text style={styles.ctaButtonText}>
+              {selectedPlan === 'annual' ? 'START 7-DAY FREE TRIAL' : 'SUBSCRIBE NOW'}
+            </Text>
+          </Pressable>
+          <Text style={styles.legalNotice}>
+            Recurring billing. Cancel anytime in App Store settings.
           </Text>
-        </Pressable>
-        <Text style={styles.legalNotice}>
-          Recurring billing. Cancel anytime in App Store settings.
-        </Text>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -170,6 +173,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  page: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+  },
   header: {
     height: 48,
     paddingHorizontal: 16,
@@ -186,7 +195,12 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+  },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 24,
     gap: 24,
