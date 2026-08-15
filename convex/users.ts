@@ -32,6 +32,7 @@ export const current = query({
       firstName: user.firstName,
       lastName: user.lastName,
       username: user.username,
+      role: user.role ?? 'user',
       plan: user.plan ?? 'free',
       createdAt: user.createdAt ?? user._creationTime,
       lastActiveAt: user.lastActiveAt ?? user._creationTime,

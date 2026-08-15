@@ -28,7 +28,7 @@ export default function QuestsScreen() {
   const guestProgress = useQuery(api.learning.getGuestProgress, !isAuthenticated && learner ? learner : 'skip');
   const learning = isAuthenticated ? authenticatedProgress : guestProgress;
 
-  if (authLoading || (!isAuthenticated && !learnerHydrated) || learning === undefined) {
+  if (authLoading || (!isAuthenticated && !learnerHydrated) || !learning) {
     return <QuestMessage loading message="Restoring your quests…" />;
   }
 

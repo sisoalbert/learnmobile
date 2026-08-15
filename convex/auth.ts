@@ -72,6 +72,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         await ctx.db.patch(userId, {
           username: normalizedUsername,
           normalizedUsername,
+          role: user.role ?? 'user',
           plan: user.plan ?? 'free',
           createdAt: user.createdAt ?? user._creationTime,
           lastActiveAt: Date.now(),

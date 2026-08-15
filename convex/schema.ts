@@ -10,6 +10,7 @@ import {
   progressStatusValidator,
   submittedAnswerValidator,
 } from './learningValidators';
+import { userRoleValidator } from './roles';
 
 export default defineSchema({
   ...authTables,
@@ -26,6 +27,7 @@ export default defineSchema({
     lastName: v.optional(v.string()),
     username: v.optional(v.string()),
     normalizedUsername: v.optional(v.string()),
+    role: v.optional(userRoleValidator),
     plan: v.optional(v.union(v.literal('free'), v.literal('premium'))),
     createdAt: v.optional(v.number()),
     lastActiveAt: v.optional(v.number()),

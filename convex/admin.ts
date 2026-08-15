@@ -1,48 +1,24 @@
-import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 
-import { query } from './_generated/server';
+import { internalMutation, query } from './_generated/server';
+import { requireAdmin } from './authz';
+import { userRoleValidator } from './roles';
 
-const tableName = v.union(
-  v.literal('users'),
-  v.literal('tasks'),
-  v.literal('featureFlags'),
-  v.literal('courses'),
-  v.literal('units'),
-  v.literal('lessons'),
-  v.literal('exercises'),
-  v.literal('exerciseOptions'),
-  v.literal('exerciseSolutions'),
-  v.literal('learnerSessions'),
-  v.literal('userCourseProgress'),
-  v.literal('lessonAttempts'),
-  v.literal('exerciseAttempts'),
-  v.literal('dailyActivity'),
-  v.literal('streaks'),
-  v.literal('learnerRewards'),
-  v.literal('monthlyQuestProgress'),
-  v.literal('lessonRewards'),
-  v.literal('achievements'),
-  v.literal('userAchievements'),
-  v.literal('subscriptions'),
-  v.literal('leaderboards'),
-  v.literal('leaderboardEntries'),
-  v.literal('devices'),
-  v.literal('pushNotificationDeliveries'),
-);
-
-export const listTableRows = query({
+export const setUserRole = internalMutation({
   args: {
-    table: tableName,
-    limit: v.optional(v.number()),
+    userId: v.id('users'),
+    role: userRoleValidator,
   },
-  returns: v.array(v.any()),
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
+  returns: v.object({
+    userId: v.id('users'),
+    role: userRoleValidator,
+  }),
+  handler: async (ctx, { userId, role }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error('User not found');
 
-    const limit = Math.max(1, Math.min(Math.floor(args.limit ?? 100), 250));
-    return await ctx.db.query(args.table).order('desc').take(limit);
+    await ctx.db.patch(userId, { role });
+    return { userId, role };
   },
 });
 
@@ -61,8 +37,7 @@ export const listUsers = query({
     isActive: v.boolean(),
   })),
   handler: async (ctx) => {
-    const currentUserId = await getAuthUserId(ctx);
-    if (!currentUserId) throw new Error('Not authenticated');
+    await requireAdmin(ctx);
 
     const users = await ctx.db.query('users').order('desc').take(250);
     const totalLessons = (await ctx.db.query('lessons').collect()).length;

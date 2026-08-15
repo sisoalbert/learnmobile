@@ -24,7 +24,7 @@ export default function CalendarScreen() {
   const guestProgress = useQuery(api.learning.getGuestProgress, !isAuthenticated && learner ? learner : 'skip');
   const learning = isAuthenticated ? authenticatedProgress : guestProgress;
 
-  if (authLoading || (!isAuthenticated && !learnerHydrated) || learning === undefined) {
+  if (authLoading || (!isAuthenticated && !learnerHydrated) || !learning) {
     return <CalendarMessage message="Restoring your practice calendar…" />;
   }
 

@@ -1,7 +1,7 @@
-import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 
 import { mutation, query } from './_generated/server';
+import { requireAdmin } from './authz';
 
 const MOBILE_ADS_FLAG_KEY = 'react-native-google-mobile-ads';
 
@@ -22,8 +22,7 @@ export const setMobileAdsEnabled = mutation({
   args: { enabled: v.boolean() },
   returns: v.boolean(),
   handler: async (ctx, { enabled }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
+    await requireAdmin(ctx);
 
     const existing = await ctx.db
       .query('featureFlags')

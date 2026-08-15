@@ -45,7 +45,7 @@ export default function HomeScreen() {
     if (learning?.gems !== undefined) setGemBalance(learning.gems);
   }, [learning?.gems, setGemBalance]);
 
-  if (authLoading || courses === undefined || learning === undefined || (selectedCourse && coursePath === undefined)) {
+  if (authLoading || courses === undefined || !learning || (selectedCourse && coursePath === undefined)) {
     return <HomeMessage loading message="Restoring your learning path…" />;
   }
   if (!selectedCourse || !coursePath) {

@@ -18,6 +18,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import type { LessonNode, PathUnit, PublishedCourse } from './home-path';
 
+const APP_ICON = require('@/assets/images/icon.png');
 const REX = require('@/assets/logo.png');
 const NODE_SIZE = 76;
 const NODE_RADIUS = NODE_SIZE / 2;
@@ -37,8 +38,8 @@ export function ProgressHeader({
 }) {
   return (
     <View style={styles.progressHeader}>
-      <View accessibilityLabel="Learn Expo Rex" accessibilityRole="image" style={styles.brandMark}>
-        <Image contentFit="contain" source={REX} style={styles.brandImage} />
+      <View accessibilityLabel="Learn Expo" accessibilityRole="image" style={styles.brandMark}>
+        <Image contentFit="cover" source={APP_ICON} style={styles.brandImage} />
       </View>
       <View style={styles.counterRow}>
         <ProgressCounter color="#F59E0B" icon="flame" label="day streak" value={streak} />
@@ -260,8 +261,8 @@ function ActiveLessonCallout({
 
 const styles = StyleSheet.create({
   progressHeader: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderWidth: 1, borderColor: '#E4EAF2', borderRadius: 20, borderCurve: 'continuous', backgroundColor: '#FFFFFF', boxShadow: '0 8px 24px rgba(20, 41, 75, 0.07)' },
-  brandMark: { width: 50, height: 50, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderCurve: 'continuous', backgroundColor: '#0F2747' },
-  brandImage: { width: 42, height: 42 },
+  brandMark: { width: 50, height: 50, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderCurve: 'continuous' },
+  brandImage: { width: '100%', height: '100%' },
   counterRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', gap: 4 },
   counter: { minWidth: 62, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 5, borderRadius: 13 },
   counterValue: { fontSize: 16, fontWeight: '900', fontVariant: ['tabular-nums'] },
