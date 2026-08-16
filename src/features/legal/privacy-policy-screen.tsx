@@ -151,8 +151,8 @@ export default function PrivacyPolicyScreen() {
             </Bullet>
             <Bullet>
               Technical and diagnostic information, such as device and operating-system details,
-              IP address, app interactions, crash reports, performance data, and sampled session
-              replays used to investigate errors.
+              timezone, IP address, app interactions, crash reports, performance data, and sampled
+              session replays used to investigate errors.
             </Bullet>
             <Bullet>
               Information stored on your device, including onboarding choices and the secure token
@@ -172,9 +172,9 @@ export default function PrivacyPolicyScreen() {
             <Paragraph>
               We share information only as needed to operate the service, comply with law, or
               protect rights and safety. Current service providers include Convex for account and
-              application services and Sentry for diagnostics, crash reporting, and sampled session
-              replay. These providers process information on our behalf under their own security and
-              privacy commitments.
+              application services, Resend for account and practice-reminder emails, and Sentry for
+              diagnostics, crash reporting, and sampled session replay. These providers process
+              information on our behalf under their own security and privacy commitments.
             </Paragraph>
             <Paragraph>
               We may also disclose information if required by law, during a business reorganization,
@@ -222,6 +222,7 @@ export default function PrivacyPolicyScreen() {
           <PolicySection icon="sliders-horizontal" title="Your choices and controls">
             <Bullet>You can use parts of Learn Expo as a guest without creating an account.</Bullet>
             <Bullet>You can reset locally saved onboarding choices from Settings.</Bullet>
+            <Bullet>You can enable or disable push and email practice reminders from Settings.</Bullet>
             <Bullet>You may request access to, correction of, or deletion of account information.</Bullet>
             <Bullet>
               Removing the app clears information stored on that device, but does not automatically

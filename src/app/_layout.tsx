@@ -15,6 +15,7 @@ import {
 import {
   usePushNotificationObserver,
 } from '@/services/notifications/push-notification-manager';
+import { usePracticeReminderContext } from '@/services/notifications/practice-reminder-context';
 import { useSessionStore } from '@/state/sessionStore';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useOnboardingStore } from '@/state/onboarding-store';
@@ -78,6 +79,8 @@ function AuthenticatedAppNavigator() {
     !isLoading && convexAuthenticated ? {} : 'skip',
   );
   const mobileAdsEnabled = useQuery(api.featureFlags.getMobileAdsEnabled);
+
+  usePracticeReminderContext(Boolean(convexAuthenticated && currentUser), currentUser?.timezone);
 
   useContentBootstrap();
 

@@ -13,7 +13,7 @@ export default {
   expo: {
     name: 'Learn Expo',
     slug: 'learn',
-    version: '1.0.4',
+    version: '1.0.6',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'learn',
@@ -53,6 +53,7 @@ export default {
       'expo-web-browser',
       'expo-secure-store',
       'expo-notifications',
+      'expo-localization',
       [
         '@sentry/react-native/expo',
         {

@@ -12,6 +12,16 @@ import { submittedAnswerValidator } from './learningValidators';
 import { gradeQuestion } from '../src/features/questions/question-engine';
 import type { Question, QuestionAnswer } from '../src/features/questions/questions.types';
 import { applyLessonQuestProgress, mergeQuestProgress } from '../src/features/lessons/reward-progress';
+import {
+  effectiveStreakDays,
+  isValidTimezone,
+  localDateKey,
+  localTimeAt,
+  addDateKeyDays,
+  currentStreakLength,
+  longestStreakLength,
+  nextStreakReminderAt,
+} from './streakReminderTime';
 
 const HEARTS_DEFAULT = 5;
 const GEMS_PER_LESSON = 12;
@@ -215,6 +225,7 @@ async function submitExercise(
   const question = JSON.parse(solution.solutionDataJson) as Question;
   const result = gradeQuestion(question, args.answer);
   const timestamp = Date.now();
+  const practiceDateKey = await dateKeyForOwner(ctx, owner, timestamp);
   await ctx.db.insert('exerciseAttempts', {
     lessonAttemptId: attempt._id,
     ...(owner.ownerType === 'user' ? { userId: owner.userId } : { learnerSessionId: owner.learnerSessionId }),
@@ -234,7 +245,7 @@ async function submitExercise(
   await ctx.db.patch(progress._id, {
     hearts: heartsRemaining,
     updatedAt: timestamp,
-    lastPracticeDate: new Date(timestamp).toISOString().slice(0, 10),
+    lastPracticeDate: practiceDateKey,
   });
   await ctx.db.patch(attempt._id, {
     correctCount: attempt.correctCount + (result.status === 'correct' ? 1 : 0),
@@ -256,6 +267,20 @@ async function progressForAttempt(ctx: QueryCtx | MutationCtx, owner: Owner, att
 
 function dateDifference(left: string, right: string) {
   return Math.round((Date.parse(`${left}T00:00:00Z`) - Date.parse(`${right}T00:00:00Z`)) / 86_400_000);
+}
+
+async function timezoneForOwner(ctx: QueryCtx | MutationCtx, owner: Owner) {
+  if (owner.ownerType !== 'user') return 'UTC';
+  const user = await ctx.db.get(owner.userId);
+  return user?.timezone && isValidTimezone(user.timezone) ? user.timezone : 'UTC';
+}
+
+async function dateKeyForOwner(
+  ctx: QueryCtx | MutationCtx,
+  owner: Owner,
+  timestamp: number,
+) {
+  return localDateKey(timestamp, await timezoneForOwner(ctx, owner));
 }
 
 function monthKeyForDate(dateKey: string) {
@@ -430,7 +455,7 @@ async function completionSummary(
   progress: Doc<'userCourseProgress'>,
 ) {
   const completedAt = attempt.completedAt ?? Date.now();
-  const dateKey = new Date(completedAt).toISOString().slice(0, 10);
+  const dateKey = await dateKeyForOwner(ctx, owner, completedAt);
   const monthKey = monthKeyForDate(dateKey);
   const [wallet, monthly, reward, weeklyActivityDateKeys, streak, currentLesson] = await Promise.all([
     getRewardWallet(ctx, owner),
@@ -501,6 +526,7 @@ async function completeAttempt(ctx: MutationCtx, owner: Owner, attemptId: Id<'le
     return total + Math.round(exercise.xp * ((answer?.score ?? 0) / Math.max(1, answer?.maximumScore ?? 1)));
   }, 0);
   const timestamp = Date.now();
+  const dateKey = await dateKeyForOwner(ctx, owner, timestamp);
   const completedLessonKeys = [...new Set([...progress.completedLessonKeys, hierarchy.lesson.key])];
   const lessons = await orderedCourseLessons(ctx, hierarchy.course._id);
   const nextLesson = lessons.find((lesson) => !completedLessonKeys.includes(lesson.key));
@@ -519,16 +545,28 @@ async function completeAttempt(ctx: MutationCtx, owner: Owner, attemptId: Id<'le
     status: nextLesson ? 'in_progress' : 'completed',
     currentLessonId: nextLesson?._id,
     currentUnitId: nextHierarchy?.unit._id ?? hierarchy.unit._id,
-    lastPracticeDate: new Date(timestamp).toISOString().slice(0, 10),
+    lastPracticeDate: dateKey,
     updatedAt: timestamp,
   });
 
-  const dateKey = new Date(timestamp).toISOString().slice(0, 10);
   const firstLessonToday = await applyDailyActivity(ctx, owner, dateKey, xpEarned);
   if (owner.ownerType === 'user') await updateStreak(ctx, owner.userId, dateKey);
   const accuracyPercent = maximumScore ? Math.round(score / maximumScore * 100) : 0;
   await awardLessonCompletion(ctx, owner, attempt._id, dateKey, accuracyPercent, firstLessonToday);
-  if (owner.ownerType === 'user') await ctx.db.patch(owner.userId, { lastActiveAt: timestamp });
+  if (owner.ownerType === 'user') {
+    const user = await ctx.db.get(owner.userId);
+    const nextStreakEmailAt = user?.timezone
+      && isValidTimezone(user.timezone)
+      && user.onboarding?.reminderPreference === 'enabled'
+      && user.email?.trim()
+      ? localTimeAt(addDateKeyDays(localDateKey(timestamp, user.timezone), 1), 19, user.timezone)
+      : undefined;
+    await ctx.db.patch(owner.userId, {
+      lastActiveAt: timestamp,
+      lastPracticeAt: timestamp,
+      nextStreakEmailAt,
+    });
+  }
   else await ctx.db.patch(owner.learnerSessionId, { lastSeenAt: timestamp });
 
   if (owner.ownerType === 'user') {
@@ -700,7 +738,10 @@ export const getAuthenticatedProgress = query({
   handler: async (ctx) => {
     const owner = await requireUser(ctx);
     const progress = await ctx.db.query('userCourseProgress').withIndex('by_user_course', (q) => q.eq('userId', owner.userId)).collect();
-    const monthKey = monthKeyForDate(new Date().toISOString().slice(0, 10));
+    const user = await ctx.db.get(owner.userId);
+    const timezone = user?.timezone && isValidTimezone(user.timezone) ? user.timezone : 'UTC';
+    const currentDateKey = localDateKey(Date.now(), timezone);
+    const monthKey = monthKeyForDate(currentDateKey);
     const [streak, wallet, monthlyQuest, monthlyActivityDateKeys] = await Promise.all([
       ctx.db.query('streaks').withIndex('by_user', (q) => q.eq('userId', owner.userId)).unique(),
       getRewardWallet(ctx, owner),
@@ -709,7 +750,11 @@ export const getAuthenticatedProgress = query({
     ]);
     return {
       progress: await Promise.all(progress.map((item) => progressView(ctx, item))),
-      streakDays: streak?.currentDays ?? 0,
+      streakDays: effectiveStreakDays(
+        streak?.currentDays ?? 0,
+        user?.lastPracticeAt,
+        timezone,
+      ),
       gems: wallet?.gems ?? 0,
       monthlyQuest: monthlyQuestView(monthlyQuest, monthKey),
       monthlyActivityDateKeys,
@@ -750,6 +795,7 @@ export const mergeGuestProgress = mutation({
   args: { learnerId: v.string(), credential: v.string() },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    const account = await ctx.db.get(user.userId);
     const learner = await ctx.db.query('learnerSessions').withIndex('by_learner_id', (q) => q.eq('learnerId', args.learnerId)).unique();
     if (!learner || learner.credentialHash !== credentialHash(args.credential)) {
       throw new ConvexError({ code: 'INVALID_LEARNER_CREDENTIAL' });
@@ -787,21 +833,68 @@ export const mergeGuestProgress = mutation({
       await ctx.db.patch(attempt._id, { userId: user.userId, learnerSessionId: undefined });
     }
     const activities = await ctx.db.query('dailyActivity').withIndex('by_learner_date', (q) => q.eq('learnerSessionId', learner._id)).collect();
-    for (const activity of activities) {
-      const existing = await ctx.db.query('dailyActivity').withIndex('by_user_date', (q) => q.eq('userId', user.userId).eq('dateKey', activity.dateKey)).unique();
+    const timezone = account?.timezone && isValidTimezone(account.timezone) ? account.timezone : 'UTC';
+    const normalizedActivity = new Map<string, { lessonsCompleted: number; xpEarned: number }>();
+    const completedGuestAttempts = attempts.filter((attempt) =>
+      attempt.status === 'completed' && attempt.completedAt !== undefined);
+    if (completedGuestAttempts.length > 0) {
+      for (const attempt of completedGuestAttempts) {
+        const dateKey = localDateKey(attempt.completedAt!, timezone);
+        const current = normalizedActivity.get(dateKey) ?? { lessonsCompleted: 0, xpEarned: 0 };
+        normalizedActivity.set(dateKey, {
+          lessonsCompleted: current.lessonsCompleted + 1,
+          xpEarned: current.xpEarned + attempt.xpEarned,
+        });
+      }
+    } else {
+      for (const activity of activities) {
+        normalizedActivity.set(activity.dateKey, {
+          lessonsCompleted: activity.lessonsCompleted,
+          xpEarned: activity.xpEarned,
+        });
+      }
+    }
+    for (const activity of activities) await ctx.db.delete(activity._id);
+    for (const [dateKey, activity] of normalizedActivity) {
+      const existing = await ctx.db.query('dailyActivity').withIndex('by_user_date', (q) => q.eq('userId', user.userId).eq('dateKey', dateKey)).unique();
       if (existing) {
         await ctx.db.patch(existing._id, {
           lessonsCompleted: existing.lessonsCompleted + activity.lessonsCompleted,
           xpEarned: existing.xpEarned + activity.xpEarned,
           updatedAt: Date.now(),
         });
-        await ctx.db.delete(activity._id);
       } else {
-        await ctx.db.patch(activity._id, { userId: user.userId, learnerSessionId: undefined, updatedAt: Date.now() });
+        await ctx.db.insert('dailyActivity', {
+          userId: user.userId,
+          dateKey,
+          lessonsCompleted: activity.lessonsCompleted,
+          xpEarned: activity.xpEarned,
+          updatedAt: Date.now(),
+        });
       }
     }
-    const dates = activities.map((activity) => activity.dateKey).sort();
-    for (const date of dates) await updateStreak(ctx, user.userId, date);
+    const allActivities = await ctx.db.query('dailyActivity').withIndex('by_user_date', (q) => q.eq('userId', user.userId)).collect();
+    const dates = allActivities.filter((activity) => activity.lessonsCompleted > 0).map((activity) => activity.dateKey).sort();
+    const today = localDateKey(Date.now(), timezone);
+    const currentDays = currentStreakLength(dates, today);
+    const longestDays = longestStreakLength(dates);
+    const streak = await ctx.db.query('streaks').withIndex('by_user', (q) => q.eq('userId', user.userId)).unique();
+    if (streak) {
+      await ctx.db.patch(streak._id, {
+        currentDays,
+        longestDays: Math.max(streak.longestDays, longestDays),
+        lastQualifiedDate: dates.at(-1),
+        updatedAt: Date.now(),
+      });
+    } else if (dates.length > 0) {
+      await ctx.db.insert('streaks', {
+        userId: user.userId,
+        currentDays,
+        longestDays,
+        lastQualifiedDate: dates.at(-1),
+        updatedAt: Date.now(),
+      });
+    }
 
     const guestWallet = await ctx.db.query('learnerRewards').withIndex('by_learner', (q) => q.eq('learnerSessionId', learner._id)).unique();
     if (guestWallet) {
@@ -835,7 +928,29 @@ export const mergeGuestProgress = mutation({
     }
 
     await ctx.db.patch(learner._id, { userId: user.userId, anonymous: false, mergedAt: Date.now(), lastSeenAt: Date.now() });
-    await ctx.db.patch(user.userId, { lastActiveAt: Date.now() });
+    const guestLastPracticeAt = completedGuestAttempts.reduce<number | undefined>(
+      (latest, attempt) => latest === undefined
+        ? attempt.completedAt
+        : Math.max(latest, attempt.completedAt!),
+      undefined,
+    );
+    const lastPracticeAt = guestLastPracticeAt === undefined
+      ? account?.lastPracticeAt
+      : Math.max(account?.lastPracticeAt ?? 0, guestLastPracticeAt);
+    let nextStreakEmailAt: number | undefined;
+    if (
+      account?.onboarding?.reminderPreference === 'enabled'
+      && account.email?.trim()
+      && lastPracticeAt !== undefined
+      && currentDays > 0
+    ) {
+      nextStreakEmailAt = nextStreakReminderAt(lastPracticeAt, timezone);
+    }
+    await ctx.db.patch(user.userId, {
+      lastActiveAt: Date.now(),
+      lastPracticeAt,
+      nextStreakEmailAt,
+    });
     return { merged: true, alreadyMerged: false };
   },
 });

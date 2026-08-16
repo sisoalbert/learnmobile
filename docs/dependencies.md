@@ -246,6 +246,10 @@ The Convex notification actions require `EXPO_PUSH_ACCESS_TOKEN` as a server-onl
 variable. Configure it independently on development and production deployments; never expose it
 through an `EXPO_PUBLIC_*` variable.
 
+Streak-at-risk email actions require `RESEND_API_KEY`. Optional server-only variables are
+`STREAK_EMAIL_FROM`, `LEARN_EXPO_APP_URL`, and `RESEND_TEST_RECIPIENT`. The 30-minute Convex cron
+uses each user's indexed `nextStreakEmailAt`; it does not scan the full user table.
+
 ---
 
 ## 10. Calendar and Sharing

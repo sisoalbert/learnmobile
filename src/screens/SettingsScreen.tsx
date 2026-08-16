@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import * as Sentry from '@sentry/react-native';
-import { useConvexAuth, useMutation } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from 'convex/react';
 import * as Updates from 'expo-updates';
 import { Alert, FlatList, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +20,10 @@ import {
 } from '@/features/onboarding/onboarding-content';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { feedback, useFeedbackPreferencesStore } from '@/services/feedback';
-import { disableStoredDevice } from '@/services/notifications/push-notification-manager';
+import {
+  disableStoredDevice,
+  synchronizeStoredDevice,
+} from '@/services/notifications/push-notification-manager';
 import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
 import { api } from '../../convex/_generated/api';
 
@@ -41,6 +44,9 @@ export default function SettingsScreen() {
   const { isAuthenticated } = useConvexAuth();
   const { signOut: signOutFromConvex } = useAuthActions();
   const disableDevice = useMutation(api.notifications.disableDevice);
+  const registerDevice = useMutation(api.notifications.registerDevice);
+  const updatePracticeReminders = useMutation(api.users.updatePracticeReminders);
+  const currentUser = useQuery(api.users.current, isAuthenticated ? {} : 'skip');
   const soundEffectsEnabled = useFeedbackPreferencesStore(
     (state) => state.soundEffectsEnabled,
   );
@@ -54,6 +60,8 @@ export default function SettingsScreen() {
     (state) => state.setHapticFeedbackEnabled,
   );
   const [isCheckingForUpdate, setIsCheckingForUpdate] = useState(false);
+  const [isUpdatingReminders, setIsUpdatingReminders] = useState(false);
+  const practiceRemindersEnabled = currentUser?.onboarding?.reminderPreference === 'enabled';
 
   const handleReset = async () => {
     feedback.play('buttonTap');
@@ -114,6 +122,28 @@ export default function SettingsScreen() {
     }
     feedback.play('buttonTap');
     setHapticFeedbackEnabled(false);
+  };
+
+  const handlePracticeRemindersChange = async (enabled: boolean) => {
+    if (!isAuthenticated || isUpdatingReminders) return;
+    feedback.play('buttonTap');
+    setIsUpdatingReminders(true);
+    try {
+      await updatePracticeReminders({ enabled });
+      onboarding.setReminderPreference(enabled ? 'enabled' : 'disabled');
+      if (enabled) {
+        await synchronizeStoredDevice(registerDevice, disableDevice);
+      } else {
+        await disableStoredDevice(disableDevice);
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: 'notifications', operation: 'update_practice_reminders' },
+      });
+      Alert.alert('Unable to update reminders', 'Please check your connection and try again.');
+    } finally {
+      setIsUpdatingReminders(false);
+    }
   };
 
   const handleCheckForUpdates = async () => {
@@ -195,9 +225,9 @@ export default function SettingsScreen() {
         id: 'practice-reminders',
         label: 'Practice reminders',
         value:
-          onboarding.reminderPreference === 'enabled'
+          currentUser?.onboarding?.reminderPreference === 'enabled'
             ? 'Enabled'
-            : onboarding.reminderPreference === 'disabled'
+            : currentUser?.onboarding?.reminderPreference === 'disabled'
               ? 'Disabled'
               : 'Not selected',
       },
@@ -219,7 +249,7 @@ export default function SettingsScreen() {
     onboarding.learningGoal,
     onboarding.learningPlan,
     onboarding.motivations,
-    onboarding.reminderPreference,
+    currentUser?.onboarding?.reminderPreference,
     onboarding.startingPoint,
   ]);
 
@@ -266,6 +296,25 @@ export default function SettingsScreen() {
                 <Text selectable style={styles.updateDescription}>
                   Choose how Learn Expo responds to your interactions.
                 </Text>
+              </View>
+              <View style={styles.preferenceRow}>
+                <View style={styles.preferenceCopy}>
+                  <Text nativeID="practice-reminders-label" selectable style={styles.preferenceLabel}>
+                    Practice reminders
+                  </Text>
+                  <Text selectable style={styles.preferenceDescription}>
+                    Get push and email reminders when your learning streak is at risk.
+                  </Text>
+                </View>
+                <Switch
+                  accessibilityLabel="Practice reminders"
+                  accessibilityState={{ checked: practiceRemindersEnabled }}
+                  disabled={!isAuthenticated || currentUser === undefined || isUpdatingReminders}
+                  onValueChange={(enabled) => void handlePracticeRemindersChange(enabled)}
+                  trackColor={{ false: '#C9CDD5', true: '#8BCBEE' }}
+                  thumbColor={practiceRemindersEnabled ? '#1899D6' : '#FFFFFF'}
+                  value={practiceRemindersEnabled}
+                />
               </View>
               <View style={styles.preferenceRow}>
                 <View style={styles.preferenceCopy}>

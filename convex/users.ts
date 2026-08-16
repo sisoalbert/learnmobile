@@ -2,6 +2,15 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 
 import { mutation, query } from './_generated/server';
+import {
+  addDateKeyDays,
+  currentStreakLength,
+  isValidTimezone,
+  localDateKey,
+  localTimeAt,
+  longestStreakLength,
+  nextStreakReminderAt,
+} from './streakReminderTime';
 
 export const current = query({
   args: {},
@@ -36,9 +45,169 @@ export const current = query({
       plan: user.plan ?? 'free',
       createdAt: user.createdAt ?? user._creationTime,
       lastActiveAt: user.lastActiveAt ?? user._creationTime,
+      timezone: user.timezone,
+      lastPracticeAt: user.lastPracticeAt,
+      lastStreakEmailAt: user.lastStreakEmailAt,
+      nextStreakEmailAt: user.nextStreakEmailAt,
       authProvider: provider === 'google' || provider === 'apple' ? provider : 'email',
       onboarding: user.onboarding,
     };
+  },
+});
+
+export const syncPracticeReminderContext = mutation({
+  args: { timezone: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('UNAUTHENTICATED');
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error('USER_NOT_FOUND');
+
+    const timezone = args.timezone.trim();
+    if (!isValidTimezone(timezone)) throw new Error('INVALID_TIMEZONE');
+    const now = Date.now();
+    let lastPracticeAt = user.lastPracticeAt;
+    let currentDays = 0;
+
+    if (user.timezone !== timezone || lastPracticeAt === undefined) {
+      const completedAttempts = (await ctx.db
+        .query('lessonAttempts')
+        .withIndex('by_user_status_completed_at', (q) =>
+          q.eq('userId', userId).eq('status', 'completed'))
+        .collect())
+        .filter((attempt) => attempt.completedAt !== undefined);
+      const dateKeys = completedAttempts.map((attempt) =>
+        localDateKey(attempt.completedAt!, timezone));
+      const activityByDate = new Map<string, { lessonsCompleted: number; xpEarned: number }>();
+      for (const attempt of completedAttempts) {
+        const dateKey = localDateKey(attempt.completedAt!, timezone);
+        const existing = activityByDate.get(dateKey) ?? { lessonsCompleted: 0, xpEarned: 0 };
+        activityByDate.set(dateKey, {
+          lessonsCompleted: existing.lessonsCompleted + 1,
+          xpEarned: existing.xpEarned + attempt.xpEarned,
+        });
+      }
+
+      const existingActivities = await ctx.db
+        .query('dailyActivity')
+        .withIndex('by_user_date', (q) => q.eq('userId', userId))
+        .collect();
+      for (const activity of existingActivities) await ctx.db.delete(activity._id);
+      for (const [dateKey, activity] of activityByDate) {
+        await ctx.db.insert('dailyActivity', {
+          userId,
+          dateKey,
+          ...activity,
+          updatedAt: now,
+        });
+      }
+
+      lastPracticeAt = completedAttempts.reduce<number | undefined>(
+        (latest, attempt) => latest === undefined
+          ? attempt.completedAt
+          : Math.max(latest, attempt.completedAt!),
+        undefined,
+      );
+      const today = localDateKey(now, timezone);
+      currentDays = currentStreakLength(dateKeys, today);
+      const computedLongest = longestStreakLength(dateKeys);
+      const streak = await ctx.db
+        .query('streaks')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .unique();
+      const lastQualifiedDate = dateKeys.sort().at(-1);
+      if (streak) {
+        await ctx.db.patch(streak._id, {
+          currentDays,
+          longestDays: Math.max(streak.longestDays, computedLongest),
+          lastQualifiedDate,
+          updatedAt: now,
+        });
+      } else if (lastQualifiedDate) {
+        await ctx.db.insert('streaks', {
+          userId,
+          currentDays,
+          longestDays: computedLongest,
+          lastQualifiedDate,
+          updatedAt: now,
+        });
+      }
+    } else {
+      const streak = await ctx.db
+        .query('streaks')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .unique();
+      currentDays = streak?.currentDays ?? 0;
+    }
+
+    let nextStreakEmailAt: number | undefined;
+    if (
+      user.onboarding?.reminderPreference === 'enabled'
+      && user.email?.trim()
+      && lastPracticeAt !== undefined
+      && currentDays > 0
+    ) {
+      const today = localDateKey(now, timezone);
+      nextStreakEmailAt = user.lastStreakEmailAt !== undefined
+        && localDateKey(user.lastStreakEmailAt, timezone) === today
+        ? localTimeAt(addDateKeyDays(today, 1), 19, timezone)
+        : nextStreakReminderAt(lastPracticeAt, timezone, now);
+    }
+
+    await ctx.db.patch(userId, {
+      timezone,
+      lastPracticeAt,
+      nextStreakEmailAt,
+      streakEmailVariantIndex: user.streakEmailVariantIndex ?? 0,
+    });
+    return { timezone, lastPracticeAt: lastPracticeAt ?? null, nextStreakEmailAt: nextStreakEmailAt ?? null };
+  },
+});
+
+export const updatePracticeReminders = mutation({
+  args: { enabled: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('UNAUTHENTICATED');
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error('USER_NOT_FOUND');
+    const now = Date.now();
+    const onboarding = user.onboarding ?? {
+      completed: false,
+      motivations: [],
+      savedAt: now,
+    };
+
+    let nextStreakEmailAt: number | undefined;
+    if (
+      args.enabled
+      && user.email?.trim()
+      && user.timezone
+      && isValidTimezone(user.timezone)
+      && user.lastPracticeAt !== undefined
+    ) {
+      const streak = await ctx.db
+        .query('streaks')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .unique();
+      if ((streak?.currentDays ?? 0) > 0) {
+        const today = localDateKey(now, user.timezone);
+        nextStreakEmailAt = user.lastStreakEmailAt !== undefined
+          && localDateKey(user.lastStreakEmailAt, user.timezone) === today
+          ? localTimeAt(addDateKeyDays(today, 1), 19, user.timezone)
+          : nextStreakReminderAt(user.lastPracticeAt, user.timezone, now);
+      }
+    }
+
+    await ctx.db.patch(userId, {
+      onboarding: {
+        ...onboarding,
+        reminderPreference: args.enabled ? 'enabled' : 'disabled',
+        savedAt: now,
+      },
+      nextStreakEmailAt,
+    });
+    return { enabled: args.enabled, nextStreakEmailAt: nextStreakEmailAt ?? null };
   },
 });
 

@@ -21,7 +21,7 @@ type RegisterDevice = (args: {
   platform: 'ios' | 'android';
 }) => Promise<unknown>;
 type DisableDevice = (args: { installationId: string }) => Promise<unknown>;
-type SynchronizationSource = 'home_mount' | 'app_active' | 'native_token_changed';
+type SynchronizationSource = 'home_mount' | 'app_active' | 'native_token_changed' | 'settings_toggle';
 
 let activeSynchronization: Promise<void> | null = null;
 
@@ -147,6 +147,13 @@ async function disableStoredDeviceNow(disableDevice: DisableDevice) {
 export async function disableStoredDevice(disableDevice: DisableDevice) {
   await activeSynchronization?.catch(() => undefined);
   await disableStoredDeviceNow(disableDevice);
+}
+
+export async function synchronizeStoredDevice(
+  registerDevice: RegisterDevice,
+  disableDevice: DisableDevice,
+) {
+  await synchronizeCurrentDevice(registerDevice, disableDevice, 'settings_toggle');
 }
 
 function synchronizeCurrentDevice(

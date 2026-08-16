@@ -31,11 +31,17 @@ export default defineSchema({
     plan: v.optional(v.union(v.literal('free'), v.literal('premium'))),
     createdAt: v.optional(v.number()),
     lastActiveAt: v.optional(v.number()),
+    timezone: v.optional(v.string()),
+    lastPracticeAt: v.optional(v.number()),
+    lastStreakEmailAt: v.optional(v.number()),
+    nextStreakEmailAt: v.optional(v.number()),
+    streakEmailVariantIndex: v.optional(v.number()),
     onboarding: v.optional(userOnboardingValidator),
   })
     .index('email', ['email'])
     .index('phone', ['phone'])
-    .index('normalizedUsername', ['normalizedUsername']),
+    .index('normalizedUsername', ['normalizedUsername'])
+    .index('by_nextStreakEmailAt', ['nextStreakEmailAt']),
   tasks: defineTable({
     text: v.string(),
     isCompleted: v.boolean(),
@@ -168,6 +174,7 @@ export default defineSchema({
   })
     .index('by_client_key', ['clientAttemptKey'])
     .index('by_user_lesson', ['userId', 'lessonId'])
+    .index('by_user_status_completed_at', ['userId', 'status', 'completedAt'])
     .index('by_learner_lesson', ['learnerSessionId', 'lessonId']),
   exerciseAttempts: defineTable({
     lessonAttemptId: v.id('lessonAttempts'),

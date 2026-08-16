@@ -1,4 +1,5 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { getFunctionName } from 'convex/server';
 
 import { feedback, useFeedbackPreferencesStore } from '@/services/feedback';
 import { useOnboardingStore } from '@/state/onboarding-store';
@@ -8,15 +9,25 @@ import SettingsScreen from '../SettingsScreen';
 const mockReplace = jest.fn();
 const mockSignOutFromConvex = jest.fn();
 let mockIsAuthenticated = false;
+const mockUpdatePracticeReminders = jest.fn().mockResolvedValue(undefined);
+const mockGetFunctionName = getFunctionName;
 
 jest.mock('@convex-dev/auth/react', () => ({
   useAuthActions: () => ({ signOut: mockSignOutFromConvex }),
 }));
 
-jest.mock('convex/react', () => ({
-  useConvexAuth: () => ({ isAuthenticated: mockIsAuthenticated, isLoading: false }),
-  useMutation: () => jest.fn().mockResolvedValue(undefined),
-}));
+jest.mock('convex/react', () => {
+  return {
+    useConvexAuth: () => ({ isAuthenticated: mockIsAuthenticated, isLoading: false }),
+    useMutation: (reference: unknown) =>
+      mockGetFunctionName(reference as never) === 'users:updatePracticeReminders'
+        ? mockUpdatePracticeReminders
+        : jest.fn().mockResolvedValue(undefined),
+    useQuery: () => mockIsAuthenticated ? {
+      onboarding: { reminderPreference: 'enabled' },
+    } : null,
+  };
+});
 
 jest.mock('@sentry/react-native', () => ({
   captureException: jest.fn(),
@@ -77,6 +88,18 @@ describe('feedback settings', () => {
     expect(feedbackPlay).toHaveBeenCalledWith('buttonTap');
   });
 
+  test('persists the shared push and email reminder preference', async () => {
+    mockIsAuthenticated = true;
+    const screen = render(<SettingsScreen />);
+
+    await act(async () => {
+      fireEvent(screen.getByLabelText('Practice reminders'), 'valueChange', false);
+    });
+
+    expect(mockUpdatePracticeReminders).toHaveBeenCalledWith({ enabled: false });
+    expect(useOnboardingStore.getState().reminderPreference).toBe('disabled');
+  });
+
   test('resets all local data for guest user without signing out from convex', async () => {
     mockIsAuthenticated = false;
     const screen = render(<SettingsScreen />);
@@ -108,4 +131,3 @@ describe('feedback settings', () => {
     });
   });
 });
-

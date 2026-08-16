@@ -94,6 +94,9 @@ Important fields:
 - `username`, `normalizedUsername` — display username and canonical lowercase lookup value.
 - `plan` — `free` or `premium`.
 - `createdAt`, `lastActiveAt` — application-level lifecycle timestamps.
+- `timezone` — the learner's current IANA timezone, reported by the authenticated app.
+- `lastPracticeAt` — timestamp of the latest qualifying lesson completion; app opens do not update it.
+- `lastStreakEmailAt`, `nextStreakEmailAt`, `streakEmailVariantIndex` — streak-email delivery and rotation state.
 - `onboarding` — validated onboarding answers and preferences.
 
 Indexes:
@@ -101,6 +104,7 @@ Indexes:
 - `email` supports email identity lookup.
 - `phone` supports phone identity lookup.
 - `normalizedUsername` supports username uniqueness and lookup.
+- `by_nextStreakEmailAt` selects only reminder recipients whose scheduled timestamp is due.
 
 Deletion behavior: account deletion removes the user and all user-owned progress, attempts, activity, streaks, achievements, subscription records, leaderboard entries, linked learner sessions, and authentication records. Public course content is preserved.
 
@@ -404,7 +408,7 @@ Stores activity totals for one learner on one calendar date. Guest records can b
 Fields:
 
 - `userId` or `learnerSessionId` — activity owner.
-- `dateKey` — calendar date.
+- `dateKey` — calendar date in the authenticated learner's IANA timezone; guests use UTC until their progress is merged.
 - `lessonsCompleted` — completions credited that day.
 - `xpEarned` — XP credited that day.
 - `updatedAt` — latest aggregation time.
