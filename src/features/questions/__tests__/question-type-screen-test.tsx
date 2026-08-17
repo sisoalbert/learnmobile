@@ -1,8 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
+import { Keyboard, Platform } from 'react-native';
 
 import { feedback } from '@/services/feedback';
 import { useSessionStore } from '@/state/sessionStore';
+import { QUESTION_INPUT_ACCESSORY_ID } from '../question-constants';
 import { QUESTION_FIXTURES_BY_TYPE } from '../question-fixtures';
 import { QuestionTypeScreen } from '../question-type-screen';
 import { parseTemplateLines } from '../question-ui';
@@ -67,6 +69,30 @@ describe('QuestionTypeScreen', () => {
     expect(screen.getByText('Check answer')).toBeDisabled();
     fireEvent.changeText(screen.getByLabelText('Answer for message'), 'Hello Expo!');
     expect(screen.getByText('Check answer')).toBeEnabled();
+  });
+
+  test('keeps keyboard controls available for the code editor', () => {
+    const dismissKeyboard = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => undefined);
+    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.build_and_render} />);
+
+    expect(screen.getByLabelText('Question content')).toHaveProp(
+      'keyboardDismissMode',
+      Platform.OS === 'ios' ? 'interactive' : 'on-drag',
+    );
+    expect(screen.getByLabelText('Code editor for App.tsx')).toHaveProp(
+      'inputAccessoryViewID',
+      QUESTION_INPUT_ACCESSORY_ID,
+    );
+    expect(screen.getByLabelText('Code editor for App.tsx')).toHaveProp(
+      'keyboardType',
+      Platform.OS === 'ios' ? 'ascii-capable' : 'default',
+    );
+
+    if (Platform.OS === 'ios') {
+      fireEvent.press(screen.getByLabelText('Dismiss keyboard'));
+      expect(dismissKeyboard).toHaveBeenCalled();
+    }
+    dismissKeyboard.mockRestore();
   });
 
   test('adds builder blocks without nesting the slot and row actions', () => {

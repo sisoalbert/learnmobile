@@ -1,14 +1,14 @@
 /* eslint-disable react-hooks/immutability -- Reanimated SharedValues are intentionally mutated in UI-thread gesture callbacks. */
 import { Lucide, type LucideIconName } from '@react-native-vector-icons/lucide';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
+import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { feedback } from '@/services/feedback';
 import { RenderNodePreview } from './code-preview';
-import { QUESTION_COLORS } from './question-constants';
+import { QUESTION_COLORS, QUESTION_INPUT_ACCESSORY_ID } from './question-constants';
 import type { CodeFile, RenderNode, RuleOutcome } from './questions.types';
 
 export function SelectionCard({
@@ -136,6 +136,8 @@ export function TemplateFields({
                     autoCapitalize="none"
                     autoCorrect={false}
                     editable={!disabled}
+                    inputAccessoryViewID={QUESTION_INPUT_ACCESSORY_ID}
+                    keyboardType={Platform.OS === 'ios' ? 'ascii-capable' : 'default'}
                     multiline={false}
                     value={value}
                     placeholder={placeholder}
@@ -143,6 +145,8 @@ export function TemplateFields({
                     selectTextOnFocus
                     spellCheck={false}
                     onChangeText={(nextValue) => onChange({ ...values, [segment.id]: nextValue })}
+                    onSubmitEditing={Keyboard.dismiss}
+                    returnKeyType="done"
                     style={[styles.inlineInput, { width: getBlankWidth(value, placeholder) }]}
                   />
                 );
@@ -272,6 +276,8 @@ export function CodeFilesEditor({ files, disabled, onChange }: { files: CodeFile
         autoCapitalize="none"
         autoCorrect={false}
         editable={!disabled && active.editable !== false}
+        inputAccessoryViewID={QUESTION_INPUT_ACCESSORY_ID}
+        keyboardType={Platform.OS === 'ios' ? 'ascii-capable' : 'default'}
         multiline
         onChangeText={(content) => onChange(files.map((file) => file.path === active.path ? { ...file, content } : file))}
         scrollEnabled

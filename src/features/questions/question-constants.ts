@@ -1,5 +1,7 @@
 import type { QuestionType } from './questions.types';
 
+export const QUESTION_INPUT_ACCESSORY_ID = 'question-input-accessory';
+
 export const QUESTION_TYPES: QuestionType[] = [
   'multiple_choice', 'multi_select', 'true_false', 'fill_in_the_blank', 'match_pairs',
   'arrange_in_order', 'complete_code', 'find_error', 'predict_output', 'identify_component',

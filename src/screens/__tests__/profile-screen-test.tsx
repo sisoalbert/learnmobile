@@ -14,12 +14,16 @@ import ProfileScreen from '../ProfileScreen';
 const mockDeleteCurrentUser = jest.fn();
 const mockSignOutFromConvex = jest.fn();
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 const mockCaptureException = jest.fn();
 const mockDevelopmentDevices = [{
   deviceId: 'device-id',
   platform: 'ios',
   expoPushToken: 'ExpoPushToken[development-token]',
 }];
+let mockCurrentUser: Record<string, unknown> = {};
+let mockAuthenticatedProgress: Record<string, unknown> | null = null;
+let mockGuestProgress: Record<string, unknown> | null = null;
 
 jest.mock('@convex-dev/auth/react', () => ({
   useAuthActions: () => ({ signOut: mockSignOutFromConvex }),
@@ -33,16 +37,18 @@ jest.mock('convex/react', () => {
   const { getFunctionName } = jest.requireActual('convex/server');
   return {
     useMutation: () => mockDeleteCurrentUser,
-    useQuery: (functionReference: unknown) => (
-      getFunctionName(functionReference) === 'notifications:currentDevices'
-        ? mockDevelopmentDevices
-        : { email: 'sam@example.com' }
-    ),
+    useQuery: (functionReference: unknown) => {
+      const functionName = getFunctionName(functionReference);
+      if (functionName === 'notifications:currentDevices') return mockDevelopmentDevices;
+      if (functionName === 'learning:getAuthenticatedProgress') return mockAuthenticatedProgress;
+      if (functionName === 'learning:getGuestProgress') return mockGuestProgress;
+      return mockCurrentUser;
+    },
   };
 });
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
 
 jest.mock('@/common', () => ({
@@ -56,6 +62,27 @@ describe('profile account actions', () => {
     jest.clearAllMocks();
     mockDeleteCurrentUser.mockResolvedValue({ deleted: true });
     mockSignOutFromConvex.mockResolvedValue(undefined);
+    mockCurrentUser = {
+      createdAt: Date.UTC(2024, 1, 10),
+      email: 'sam@example.com',
+      firstName: 'Sam',
+      lastName: 'Lee',
+      plan: 'premium',
+      username: 'samlee',
+    };
+    mockAuthenticatedProgress = {
+      gems: 77,
+      progress: [
+        { completedLessons: 3, totalXp: 120 },
+        { completedLessons: 2, totalXp: 50 },
+      ],
+      streakDays: 7,
+    };
+    mockGuestProgress = {
+      gems: 4,
+      progress: [{ completedLessons: 1, totalXp: 20 }],
+      streakDays: 2,
+    };
     useSessionStore.getState().setAuthenticatedUser({ id: 'user-id' });
     useLearnerSessionStore.setState({
       hasHydrated: true,
@@ -139,6 +166,44 @@ describe('profile account actions', () => {
 
     expect(screen.getByText('Expo push tokens · development')).toBeTruthy();
     expect(screen.getByText('ExpoPushToken[development-token]')).toBeTruthy();
+  });
+
+  test('renders schema-backed profile identity and learning overview', () => {
+    const screen = render(<ProfileScreen name="Profile" />);
+
+    expect(screen.getByLabelText('Rex profile illustration')).toBeTruthy();
+    expect(screen.getByText('Sam Lee')).toBeTruthy();
+    expect(screen.getByText('@samlee')).toBeTruthy();
+    expect(screen.getByText('Joined 2024')).toBeTruthy();
+    expect(screen.getByText('premium plan')).toBeTruthy();
+    expect(screen.getByLabelText('Day streak: 7')).toBeTruthy();
+    expect(screen.getByLabelText('Total XP: 170')).toBeTruthy();
+    expect(screen.getByLabelText('Lessons: 5')).toBeTruthy();
+    expect(screen.getByLabelText('Courses: 2')).toBeTruthy();
+  });
+
+  test('renders guest progress without inventing account identity', () => {
+    useSessionStore.getState().signOut();
+    const screen = render(<ProfileScreen name="Profile" />);
+
+    expect(screen.getByText('Guest learner')).toBeTruthy();
+    expect(screen.queryByText(/Joined /)).toBeNull();
+    expect(screen.queryByText(/ plan$/)).toBeNull();
+    expect(screen.getByLabelText('Day streak: 2')).toBeTruthy();
+    expect(screen.getByLabelText('Total XP: 20')).toBeTruthy();
+    expect(screen.getByLabelText('Sign in')).toBeTruthy();
+  });
+
+  test('uses zero defaults when optional profile progress is unavailable', () => {
+    mockCurrentUser = {};
+    mockAuthenticatedProgress = null;
+    const screen = render(<ProfileScreen name="Profile" />);
+
+    expect(screen.getByText('Learner')).toBeTruthy();
+    expect(screen.getByLabelText('Day streak: 0')).toBeTruthy();
+    expect(screen.getByLabelText('Total XP: 0')).toBeTruthy();
+    expect(screen.getByLabelText('Lessons: 0')).toBeTruthy();
+    expect(screen.getByLabelText('Courses: 0')).toBeTruthy();
   });
 
   test('signs out and clears every Zustand store', async () => {

@@ -1,9 +1,23 @@
 import { Lucide } from '@react-native-vector-icons/lucide';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  InputAccessoryView,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { QUESTION_COLORS, QUESTION_TYPE_META } from './question-constants';
+import {
+  QUESTION_COLORS,
+  QUESTION_INPUT_ACCESSORY_ID,
+  QUESTION_TYPE_META,
+} from './question-constants';
 import { QuestionInteraction } from './question-components';
 import { answerMatchesQuestion, gradeQuestion, isAnswerComplete } from './question-engine';
 import { getLessonQuestionProgressPercent } from './lesson-progress';
@@ -114,7 +128,10 @@ function QuestionTypeScreenContent({
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.page}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.page}
+      >
         <View style={styles.header}>
           <Pressable accessibilityLabel="Back to question types" accessibilityRole="button" hitSlop={8} onPress={() => {
             feedback.play('buttonTap');
@@ -139,8 +156,11 @@ function QuestionTypeScreenContent({
         </View>
 
         <ScrollView
+          accessibilityLabel="Question content"
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.content}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -196,7 +216,22 @@ function QuestionTypeScreenContent({
               : <PrimaryButton label="Try again" onPress={retry} color={feedbackColor} />
           ) : <PrimaryButton label={isSubmitting ? 'Checking…' : 'Check answer'} disabled={!complete || isSubmitting} onPress={() => void check()} />}
         </View>
-      </View>
+      </KeyboardAvoidingView>
+      {Platform.OS === 'ios' ? (
+        <InputAccessoryView nativeID={QUESTION_INPUT_ACCESSORY_ID}>
+          <View style={styles.keyboardAccessory}>
+            <Pressable
+              accessibilityLabel="Dismiss keyboard"
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={Keyboard.dismiss}
+              style={({ pressed }) => [styles.keyboardAccessoryButton, pressed && styles.keyboardAccessoryButtonPressed]}
+            >
+              <Text style={styles.keyboardAccessoryButtonText}>Done</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -204,6 +239,7 @@ function QuestionTypeScreenContent({
 function PrimaryButton({ label, disabled, color = QUESTION_COLORS.blue, onPress }: { label: string; disabled?: boolean; color?: string; onPress?: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={() => {
+      Keyboard.dismiss();
       feedback.play('buttonTap');
       onPress?.();
     }} style={({ pressed }) => [styles.primaryButton, { backgroundColor: disabled ? '#D8DCE3' : color, boxShadow: disabled ? '0 4px 0 #BEC3CC' : `0 4px 0 ${color === QUESTION_COLORS.blue ? QUESTION_COLORS.blueDark : color}` }, pressed && !disabled && styles.buttonPressed]}>
@@ -250,6 +286,10 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.4 },
   buttonPressed: { transform: [{ translateY: 2 }], opacity: 0.88 },
   bottomSpacer: { height: 8 },
+  keyboardAccessory: { minHeight: 44, alignItems: 'flex-end', justifyContent: 'center', paddingHorizontal: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: QUESTION_COLORS.border, backgroundColor: QUESTION_COLORS.surface },
+  keyboardAccessoryButton: { minWidth: 60, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  keyboardAccessoryButtonPressed: { backgroundColor: '#E9EDF3' },
+  keyboardAccessoryButtonText: { color: QUESTION_COLORS.blue, fontSize: 16, fontWeight: '700' },
   errorPage: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 28 },
   errorTitle: { color: QUESTION_COLORS.ink, fontSize: 23, fontWeight: '800', textAlign: 'center' },
   errorBody: { color: QUESTION_COLORS.muted, fontSize: 15, textAlign: 'center' },

@@ -1,10 +1,10 @@
 import { Lucide } from '@react-native-vector-icons/lucide';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { feedback } from '@/services/feedback';
 import { parseCodeToRenderTree, validateChallengeRequirements, validateRenderRules } from './code-preview';
-import { QUESTION_COLORS } from './question-constants';
+import { QUESTION_COLORS, QUESTION_INPUT_ACCESSORY_ID } from './question-constants';
 import {
   CodeCard,
   CodeFilesEditor,
@@ -190,7 +190,7 @@ export function FindErrorQuestionScreen({ question, answer, disabled, onAnswerCh
         const end = range.endLine ?? range.startLine;
         return Array.from({ length: end - range.startLine + 1 }, (_, index) => range.startLine + index);
       })} onLinePress={disabled ? undefined : selectLine} />
-      <TextInput editable={!disabled} multiline placeholder="Optional correction" placeholderTextColor="#9AA0AC" value={answer?.correction ?? ''} onChangeText={(correction) => onAnswerChange({ selectedRanges: selected, correction })} style={styles.correctionInput} />
+      <TextInput editable={!disabled} inputAccessoryViewID={QUESTION_INPUT_ACCESSORY_ID} keyboardType={Platform.OS === 'ios' ? 'ascii-capable' : 'default'} multiline placeholder="Optional correction" placeholderTextColor="#9AA0AC" value={answer?.correction ?? ''} onChangeText={(correction) => onAnswerChange({ selectedRanges: selected, correction })} style={styles.correctionInput} />
     </View>
   );
 }
@@ -200,7 +200,7 @@ export function PredictOutputQuestionScreen({ question, answer, disabled, onAnsw
   return (
     <View style={styles.sectionGap}>
       <CodeCard code={question.code} />
-      {question.answerMode === 'text' ? <TextInput editable={!disabled} placeholder="Type the output" placeholderTextColor="#9AA0AC" value={answer?.mode === 'text' ? answer.value : ''} onChangeText={(value) => onAnswerChange({ mode: 'text', value })} style={styles.answerInput} /> : null}
+      {question.answerMode === 'text' ? <TextInput editable={!disabled} inputAccessoryViewID={QUESTION_INPUT_ACCESSORY_ID} onSubmitEditing={Keyboard.dismiss} placeholder="Type the output" placeholderTextColor="#9AA0AC" returnKeyType="done" value={answer?.mode === 'text' ? answer.value : ''} onChangeText={(value) => onAnswerChange({ mode: 'text', value })} style={styles.answerInput} /> : null}
       {question.answerMode === 'multiple_choice' ? <View style={styles.list}>{question.options?.map((option) => <SelectionCard key={option.id} label={option.text ?? 'Preview option'} selected={answer?.mode === 'multiple_choice' && answer.selectedOptionId === option.id} disabled={disabled} onPress={() => onAnswerChange({ mode: 'multiple_choice', selectedOptionId: option.id })} />)}</View> : null}
       {question.answerMode === 'ui_preview' ? <View style={styles.previewOptions}>{question.options?.filter((option) => option.uiTree).map((option) => <Pressable key={option.id} accessibilityRole="radio" accessibilityState={{ checked: selectedTree === JSON.stringify(option.uiTree) }} disabled={disabled} onPress={() => {
         if (!option.uiTree) return;

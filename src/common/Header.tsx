@@ -52,7 +52,7 @@ export default function Header({
             accessibilityLabel="Open profile settings"
             accessibilityRole="button"
             onPress={() => feedback.play('buttonTap')}
-            style={styles.headerButton}
+            style={StyleSheet.flatten([styles.headerButton, styles.settingsButton])}
           >
             <Lucide name="settings" size={24} color="#AFAFAF" />
           </Pressable>
@@ -74,5 +74,8 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     padding: 8,
+  },
+  settingsButton: {
+    marginLeft: 'auto',
   },
 });
