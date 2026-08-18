@@ -54,12 +54,6 @@ function escapeHtml(value: string) {
     .replaceAll("'", '&#039;');
 }
 
-function appUrl(path = '/') {
-  const base = process.env.LEARN_EXPO_APP_URL
-    ?? 'https://learnexpo.questerstudios0.workers.dev';
-  return new URL(path, base.endsWith('/') ? base : `${base}/`).toString();
-}
-
 export const sendStreakReminderEmail = internalAction({
   args: { userId: v.id('users'), localDate: v.string() },
   handler: async (ctx, args): Promise<null> => {
@@ -84,8 +78,8 @@ export const sendStreakReminderEmail = internalAction({
     const recipient = process.env.RESEND_TEST_RECIPIENT ?? context.email;
     const from = process.env.STREAK_EMAIL_FROM
       ?? 'Rex at Learn Expo <reminders@updates.learnexpo.online>';
-    const learningUrl = appUrl('/');
-    const settingsUrl = appUrl('/profile/settings');
+    const learningUrl = 'https://learnexpo.online/home';
+    const settingsUrl = 'https://learnexpo.online/profile/settings';
     const streakLabel = `${context.streakDays}-day streak`;
 
     try {

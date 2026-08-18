@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.questerstudios.learn",
+      "sha256_cert_fingerprints": [
+        "3B:81:DE:A5:94:72:82:9F:3E:72:20:20:8C:F5:31:DF:25:42:6B:55:26:27:12:64:8E:76:D5:C3:F0:5D:68:5B"
+      ]
+    }
+  }
+]

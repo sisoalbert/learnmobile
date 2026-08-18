@@ -21,6 +21,7 @@ export default {
     ios: {
       icon: './assets/expo.icon',
       bundleIdentifier: 'com.questerstudios.learn',
+      associatedDomains: ['applinks:learnexpo.online'],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
@@ -35,6 +36,20 @@ export default {
       predictiveBackGestureEnabled: false,
       package: 'com.questerstudios.learn',
       googleServicesFile: './google-services.json',
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'https',
+              host: 'learnexpo.online',
+              pathPrefix: '/home',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     web: {
       output: 'single',
