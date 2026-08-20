@@ -215,3 +215,10 @@ Changing native dependencies or native configuration requires a new store build.
 3. Verify the update in a preview release build
 4. Publish the verified commit with `npm run update:production -- --message "your message"`
 5. Production builds download updates on launch and apply them after restart, or users can check manually in Settings
+
+## Deep Linking (Universal Links & App Links)
+
+Learn Expo supports custom URL schemes (`learn://`) and verified domain links (`https://learnexpo.online/...`) on both iOS and Android.
+
+See the complete [Deep Linking Runbook](docs/deep-linking.md) for configuration details, SHA-256 certificate fingerprints, Cloudflare `.well-known` deployment, and platform verification commands.
+
