@@ -335,4 +335,27 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_attempt', ['lessonAttemptId'])
     .index('by_ticket', ['ticketId']),
+  deletedUsers: defineTable({
+    userId: v.string(),
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    username: v.optional(v.string()),
+    role: v.optional(userRoleValidator),
+    plan: v.optional(v.union(v.literal("free"), v.literal("premium"))),
+    createdAt: v.optional(v.number()),
+    deletedAt: v.number(),
+    deletedByUserId: v.optional(v.id("users")),
+    deletedByEmail: v.optional(v.string()),
+    deletionReason: v.optional(v.string()),
+    snapshotJson: v.optional(v.string()),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_email", ["email"])
+    .index("by_deleted_at", ["deletedAt"]),
+  accountDeletionRequests: defineTable({
+    email: v.string(),
+    status: v.union(v.literal("pending"), v.literal("processed"), v.literal("rejected")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_email", ["email"]),
 });

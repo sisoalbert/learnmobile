@@ -1,7 +1,8 @@
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 
-import { mutation, query } from './_generated/server';
+import { mutation, query, httpAction, internalMutation } from './_generated/server';
+import { internal } from './_generated/api';
 import {
   addDateKeyDays,
   currentStreakLength,
@@ -272,6 +273,27 @@ export const deleteCurrent = mutation({
       throw new Error('User not found');
     }
 
+    const now = Date.now();
+    const name = user.name?.trim()
+      || [user.firstName, user.lastName].filter(Boolean).join(' ')
+      || user.username
+      || 'Unnamed user';
+
+    await ctx.db.insert('deletedUsers', {
+      userId: String(user._id),
+      name,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      plan: user.plan,
+      createdAt: user.createdAt ?? user._creationTime,
+      deletedAt: now,
+      deletedByUserId: user._id,
+      deletedByEmail: user.email,
+      deletionReason: 'User requested self-deletion',
+      snapshotJson: JSON.stringify(user),
+    });
+
     const accounts = await ctx.db
       .query('authAccounts')
       .withIndex('userIdAndProvider', (q) => q.eq('userId', userId))
@@ -353,4 +375,55 @@ export const deleteCurrent = mutation({
 
     return { deleted: true };
   },
+});
+
+export const saveAccountDeletionRequest = internalMutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.insert('accountDeletionRequests', {
+      email: args.email,
+      status: 'pending',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    
+    await ctx.scheduler.runAfter(0, internal.emails.sendAccountDeletionEmail, {
+      email: args.email,
+    });
+  },
+});
+
+export const requestAccountDeletion = httpAction(async (ctx, request) => {
+  const method = request.method;
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+
+  if (method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers });
+  }
+
+  if (method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405, headers });
+  }
+
+  try {
+    const data = await request.json();
+    const email = data.email;
+
+    if (!email || typeof email !== 'string') {
+      return new Response('Bad Request: Email is required', { status: 400, headers });
+    }
+
+    await ctx.runMutation(internal.users.saveAccountDeletionRequest, { email });
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return new Response('Internal Server Error', { status: 500, headers });
+  }
 });
