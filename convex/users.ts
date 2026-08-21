@@ -1,8 +1,11 @@
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { sha256 } from '@oslojs/crypto/sha2';
+import { encodeHexLowerCase } from '@oslojs/encoding';
 import { v } from 'convex/values';
 
 import { mutation, query, httpAction, internalMutation } from './_generated/server';
 import { internal } from './_generated/api';
+import { startUserDeletion } from './userDeletion';
 import {
   addDateKeyDays,
   currentStreakLength,
@@ -260,6 +263,7 @@ export const updateProfile = mutation({
 
 export const deleteCurrent = mutation({
   args: {},
+  returns: v.object({ deletionScheduled: v.boolean() }),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
 
@@ -273,123 +277,146 @@ export const deleteCurrent = mutation({
       throw new Error('User not found');
     }
 
-    const now = Date.now();
-    const name = user.name?.trim()
-      || [user.firstName, user.lastName].filter(Boolean).join(' ')
-      || user.username
-      || 'Unnamed user';
-
-    await ctx.db.insert('deletedUsers', {
-      userId: String(user._id),
-      name,
-      email: user.email,
-      username: user.username,
-      role: user.role,
-      plan: user.plan,
-      createdAt: user.createdAt ?? user._creationTime,
-      deletedAt: now,
-      deletedByUserId: user._id,
-      deletedByEmail: user.email,
-      deletionReason: 'User requested self-deletion',
-      snapshotJson: JSON.stringify(user),
+    await startUserDeletion(ctx, user, {
+      deletedByUserId: userId,
+      reason: 'User requested self-deletion',
     });
 
-    const accounts = await ctx.db
-      .query('authAccounts')
-      .withIndex('userIdAndProvider', (q) => q.eq('userId', userId))
-      .collect();
-    const sessions = await ctx.db
-      .query('authSessions')
-      .withIndex('userId', (q) => q.eq('userId', userId))
-      .collect();
-    const sessionIds = new Set(sessions.map((session) => session._id));
-
-    const learningRecords = await Promise.all([
-      ctx.db.query('userCourseProgress').withIndex('by_user_course', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('lessonAttempts').withIndex('by_user_lesson', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('exerciseAttempts').withIndex('by_user_exercise', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('dailyActivity').withIndex('by_user_date', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('streaks').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('learnerRewards').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('monthlyQuestProgress').withIndex('by_user_month', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('lessonRewards').withIndex('by_user_month', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('userAchievements').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('subscriptions').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('leaderboardEntries').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('learnerSessions').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('pushNotificationDeliveries').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
-      ctx.db.query('devices').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
-    ]);
-
-    for (const records of learningRecords) {
-      for (const record of records) await ctx.db.delete(record._id);
-    }
-
-    for (const account of accounts) {
-      const verificationCodes = await ctx.db
-        .query('authVerificationCodes')
-        .withIndex('accountId', (q) => q.eq('accountId', account._id))
-        .collect();
-      const rateLimits = await ctx.db
-        .query('authRateLimits')
-        .withIndex('identifier', (q) => q.eq('identifier', account._id))
-        .collect();
-
-      for (const verificationCode of verificationCodes) {
-        await ctx.db.delete(verificationCode._id);
-      }
-
-      for (const rateLimit of rateLimits) {
-        await ctx.db.delete(rateLimit._id);
-      }
-    }
-
-    for (const session of sessions) {
-      const refreshTokens = await ctx.db
-        .query('authRefreshTokens')
-        .withIndex('sessionId', (q) => q.eq('sessionId', session._id))
-        .collect();
-
-      for (const refreshToken of refreshTokens) {
-        await ctx.db.delete(refreshToken._id);
-      }
-    }
-
-    const sessionVerifiers = await ctx.db.query('authVerifiers').collect();
-
-    for (const verifier of sessionVerifiers) {
-      if (verifier.sessionId && sessionIds.has(verifier.sessionId)) {
-        await ctx.db.delete(verifier._id);
-      }
-    }
-
-    for (const session of sessions) {
-      await ctx.db.delete(session._id);
-    }
-
-    for (const account of accounts) {
-      await ctx.db.delete(account._id);
-    }
-
-    await ctx.db.delete(userId);
-
-    return { deleted: true };
+    return { deletionScheduled: true };
   },
 });
 
+const DELETION_CONFIRMATION_TTL_MS = 30 * 60 * 1000;
+const DELETION_RESEND_COOLDOWN_MS = 15 * 60 * 1000;
+const DELETION_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const DELETION_RATE_LIMIT_MAX = 5;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function hashValue(value: string) {
+  return encodeHexLowerCase(sha256(new TextEncoder().encode(value)));
+}
+
+function createDeletionToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 export const saveAccountDeletionRequest = internalMutation({
-  args: { email: v.string() },
+  args: {
+    email: v.string(),
+    emailHash: v.string(),
+    confirmationTokenHash: v.string(),
+    confirmationUrl: v.string(),
+    rateLimitIdentifierHash: v.string(),
+  },
+  returns: v.object({ accepted: v.boolean() }),
   handler: async (ctx, args) => {
-    await ctx.db.insert('accountDeletionRequests', {
+    const now = Date.now();
+    const rateLimit = await ctx.db
+      .query('accountDeletionRateLimits')
+      .withIndex('by_identifier', (q) => q.eq('identifierHash', args.rateLimitIdentifierHash))
+      .unique();
+
+    if (rateLimit && now - rateLimit.windowStartedAt < DELETION_RATE_LIMIT_WINDOW_MS) {
+      if (rateLimit.requestCount >= DELETION_RATE_LIMIT_MAX) return { accepted: true };
+      await ctx.db.patch(rateLimit._id, {
+        requestCount: rateLimit.requestCount + 1,
+        updatedAt: now,
+      });
+    } else if (rateLimit) {
+      await ctx.db.patch(rateLimit._id, {
+        windowStartedAt: now,
+        requestCount: 1,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert('accountDeletionRateLimits', {
+        identifierHash: args.rateLimitIdentifierHash,
+        windowStartedAt: now,
+        requestCount: 1,
+        updatedAt: now,
+      });
+    }
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('email', (q) => q.eq('email', args.email))
+      .first();
+    if (!user || user.deletionPendingAt) return { accepted: true };
+
+    const verifiedRequest = await ctx.db
+      .query('accountDeletionRequests')
+      .withIndex('by_email_status', (q) => q.eq('email', args.email).eq('status', 'verified'))
+      .first();
+    if (verifiedRequest) return { accepted: true };
+
+    const existingRequest = await ctx.db
+      .query('accountDeletionRequests')
+      .withIndex('by_email_status', (q) => q.eq('email', args.email).eq('status', 'pending_confirmation'))
+      .first();
+    if (existingRequest && now - existingRequest.updatedAt < DELETION_RESEND_COOLDOWN_MS) {
+      return { accepted: true };
+    }
+
+    if (existingRequest) {
+      await ctx.db.patch(existingRequest._id, {
+        emailHash: args.emailHash,
+        confirmationTokenHash: args.confirmationTokenHash,
+        confirmationExpiresAt: now + DELETION_CONFIRMATION_TTL_MS,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert('accountDeletionRequests', {
+        email: args.email,
+        emailHash: args.emailHash,
+        status: 'pending_confirmation',
+        confirmationTokenHash: args.confirmationTokenHash,
+        confirmationExpiresAt: now + DELETION_CONFIRMATION_TTL_MS,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await ctx.scheduler.runAfter(0, internal.emails.sendAccountDeletionConfirmationEmail, {
       email: args.email,
-      status: 'pending',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      confirmationUrl: args.confirmationUrl,
     });
-    
-    await ctx.scheduler.runAfter(0, internal.emails.sendAccountDeletionEmail, {
-      email: args.email,
+    return { accepted: true };
+  },
+});
+
+export const confirmAccountDeletionRequest = internalMutation({
+  args: { confirmationTokenHash: v.string() },
+  returns: v.union(v.literal('confirmed'), v.literal('expired'), v.literal('invalid')),
+  handler: async (ctx, { confirmationTokenHash }) => {
+    const request = await ctx.db
+      .query('accountDeletionRequests')
+      .withIndex('by_confirmation_token', (q) => q.eq('confirmationTokenHash', confirmationTokenHash))
+      .first();
+    if (!request || request.status !== 'pending_confirmation' || !request.email) return 'invalid';
+
+    const now = Date.now();
+    if (!request.confirmationExpiresAt || request.confirmationExpiresAt < now) {
+      await ctx.db.patch(request._id, {
+        confirmationTokenHash: undefined,
+        confirmationExpiresAt: undefined,
+        status: 'rejected',
+        updatedAt: now,
+      });
+      return 'expired';
+    }
+
+    await ctx.db.patch(request._id, {
+      confirmationTokenHash: undefined,
+      confirmationExpiresAt: undefined,
+      status: 'verified',
+      verifiedAt: now,
+      updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.emails.sendVerifiedAccountDeletionEmail, {
+      email: request.email,
+    });
+    return 'confirmed';
   },
 });
 
@@ -410,14 +437,28 @@ export const requestAccountDeletion = httpAction(async (ctx, request) => {
   }
 
   try {
+    const contentLength = Number(request.headers.get('content-length') ?? '0');
+    if (contentLength > 2048) {
+      return new Response('Payload Too Large', { status: 413, headers });
+    }
     const data = await request.json();
-    const email = data.email;
+    const email = typeof data.email === 'string' ? data.email.trim().toLowerCase() : '';
 
-    if (!email || typeof email !== 'string') {
-      return new Response('Bad Request: Email is required', { status: 400, headers });
+    if (!EMAIL_PATTERN.test(email) || email.length > 254) {
+      return new Response('Bad Request: Valid email is required', { status: 400, headers });
     }
 
-    await ctx.runMutation(internal.users.saveAccountDeletionRequest, { email });
+    const confirmationToken = createDeletionToken();
+    const origin = new URL(request.url).origin;
+    const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const clientIdentifier = request.headers.get('cf-connecting-ip') ?? forwardedFor ?? `email:${email}`;
+    await ctx.runMutation(internal.users.saveAccountDeletionRequest, {
+      email,
+      emailHash: hashValue(email),
+      confirmationTokenHash: hashValue(confirmationToken),
+      confirmationUrl: `${origin}/confirm-account-deletion?token=${confirmationToken}`,
+      rateLimitIdentifierHash: hashValue(clientIdentifier),
+    });
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
@@ -426,4 +467,25 @@ export const requestAccountDeletion = httpAction(async (ctx, request) => {
   } catch (error) {
     return new Response('Internal Server Error', { status: 500, headers });
   }
+});
+
+export const confirmAccountDeletion = httpAction(async (ctx, request) => {
+  const token = new URL(request.url).searchParams.get('token') ?? '';
+  const result = /^[a-f0-9]{64}$/.test(token)
+    ? await ctx.runMutation(internal.users.confirmAccountDeletionRequest, {
+      confirmationTokenHash: hashValue(token),
+    })
+    : 'invalid';
+  const confirmed = result === 'confirmed';
+  const title = confirmed ? 'Deletion request confirmed' : 'Confirmation link unavailable';
+  const message = confirmed
+    ? 'Your verified request has been sent to the Learn Expo support team.'
+    : result === 'expired'
+      ? 'This confirmation link has expired. Submit a new request from Learn Expo.'
+      : 'This confirmation link is invalid or has already been used.';
+
+  return new Response(
+    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><body style="font-family:system-ui,sans-serif;background:#f7f9fc;color:#17213b;margin:0;display:grid;min-height:100vh;place-items:center"><main style="max-width:520px;margin:24px;padding:32px;border:1px solid #e2e8f0;border-radius:20px;background:white;box-shadow:0 12px 32px rgba(23,33,59,.08)"><h1>${title}</h1><p style="line-height:1.6;color:#526078">${message}</p><a href="https://learnexpo.online" style="color:#1899d6;font-weight:700">Return to Learn Expo</a></main></body></html>`,
+    { status: confirmed ? 200 : 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+  );
 });

@@ -2,7 +2,7 @@ import { httpRouter } from 'convex/server';
 
 import { auth } from './auth';
 
-import { requestAccountDeletion } from './users';
+import { confirmAccountDeletion, requestAccountDeletion } from './users';
 
 const http = httpRouter();
 
@@ -12,6 +12,12 @@ http.route({
   path: '/request-account-deletion',
   method: 'POST',
   handler: requestAccountDeletion,
+});
+
+http.route({
+  path: '/confirm-account-deletion',
+  method: 'GET',
+  handler: confirmAccountDeletion,
 });
 
 http.route({

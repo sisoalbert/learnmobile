@@ -29,6 +29,7 @@ import type * as streakReminderRules from "../streakReminderRules.js";
 import type * as streakReminderTime from "../streakReminderTime.js";
 import type * as streakReminders from "../streakReminders.js";
 import type * as tasks from "../tasks.js";
+import type * as userDeletion from "../userDeletion.js";
 import type * as users from "../users.js";
 
 import type {
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   streakReminderTime: typeof streakReminderTime;
   streakReminders: typeof streakReminders;
   tasks: typeof tasks;
+  userDeletion: typeof userDeletion;
   users: typeof users;
 }>;
 

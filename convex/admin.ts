@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 import { internalMutation, mutation, query } from './_generated/server';
 import { requireAdmin } from './authz';
 import { userRoleValidator } from './roles';
+import { startUserDeletion } from './userDeletion';
 
 export const setUserRole = internalMutation({
   args: {
@@ -40,7 +41,8 @@ export const listUsers = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const users = await ctx.db.query('users').order('desc').take(250);
+    const users = (await ctx.db.query('users').order('desc').take(250))
+      .filter((user) => !user.deletionPendingAt);
     const totalLessons = (await ctx.db.query('lessons').collect()).length;
     const activeThreshold = Date.now() - (7 * 24 * 60 * 60 * 1000);
 
@@ -96,7 +98,7 @@ export const getUserDetails = query({
     await requireAdmin(ctx);
 
     const user = await ctx.db.get(userId);
-    if (!user) return null;
+    if (!user || user.deletionPendingAt) return null;
 
     const [
       devices,
@@ -310,7 +312,7 @@ export const deleteUser = mutation({
   },
   returns: v.object({
     success: v.boolean(),
-    deletedUserId: v.id('users'),
+    deletionJobId: v.id('userDeletionJobs'),
   }),
   handler: async (ctx, { userId, reason }) => {
     const admin = await requireAdmin(ctx);
@@ -324,109 +326,12 @@ export const deleteUser = mutation({
       throw new Error("User not found");
     }
 
-    const now = Date.now();
-    const name = user.name?.trim()
-      || [user.firstName, user.lastName].filter(Boolean).join(" ")
-      || user.username
-      || "Unnamed user";
-
-    // 1. Record in deletedUsers table
-    await ctx.db.insert("deletedUsers", {
-      userId: String(user._id),
-      name,
-      email: user.email,
-      username: user.username,
-      role: user.role,
-      plan: user.plan,
-      createdAt: user.createdAt ?? user._creationTime,
-      deletedAt: now,
+    const deletionJobId = await startUserDeletion(ctx, user, {
       deletedByUserId: admin._id,
-      deletedByEmail: admin.email,
-      deletionReason: reason?.trim() || "Admin deleted user account",
-      snapshotJson: JSON.stringify(user),
+      reason: reason?.trim() || 'Admin deleted user account',
     });
 
-    // 2. Cascade delete user records
-    const accounts = await ctx.db
-      .query("authAccounts")
-      .withIndex("userIdAndProvider", (q) => q.eq("userId", userId))
-      .collect();
-    const sessions = await ctx.db
-      .query("authSessions")
-      .withIndex("userId", (q) => q.eq("userId", userId))
-      .collect();
-    const sessionIds = new Set(sessions.map((session) => session._id));
-
-    const learningRecords = await Promise.all([
-      ctx.db.query("userCourseProgress").withIndex("by_user_course", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("lessonAttempts").withIndex("by_user_lesson", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("exerciseAttempts").withIndex("by_user_exercise", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("dailyActivity").withIndex("by_user_date", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("streaks").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("learnerRewards").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("monthlyQuestProgress").withIndex("by_user_month", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("lessonRewards").withIndex("by_user_month", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("userAchievements").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("subscriptions").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("leaderboardEntries").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("learnerSessions").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("pushNotificationDeliveries").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
-      ctx.db.query("devices").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
-    ]);
-
-    for (const records of learningRecords) {
-      for (const record of records) await ctx.db.delete(record._id);
-    }
-
-    for (const account of accounts) {
-      const verificationCodes = await ctx.db
-        .query("authVerificationCodes")
-        .withIndex("accountId", (q) => q.eq("accountId", account._id))
-        .collect();
-      const rateLimits = await ctx.db
-        .query("authRateLimits")
-        .withIndex("identifier", (q) => q.eq("identifier", account._id))
-        .collect();
-
-      for (const verificationCode of verificationCodes) {
-        await ctx.db.delete(verificationCode._id);
-      }
-
-      for (const rateLimit of rateLimits) {
-        await ctx.db.delete(rateLimit._id);
-      }
-    }
-
-    for (const session of sessions) {
-      const refreshTokens = await ctx.db
-        .query("authRefreshTokens")
-        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
-        .collect();
-
-      for (const refreshToken of refreshTokens) {
-        await ctx.db.delete(refreshToken._id);
-      }
-    }
-
-    const sessionVerifiers = await ctx.db.query("authVerifiers").collect();
-
-    for (const verifier of sessionVerifiers) {
-      if (verifier.sessionId && sessionIds.has(verifier.sessionId)) {
-        await ctx.db.delete(verifier._id);
-      }
-    }
-
-    for (const session of sessions) {
-      await ctx.db.delete(session._id);
-    }
-
-    for (const account of accounts) {
-      await ctx.db.delete(account._id);
-    }
-
-    await ctx.db.delete(userId);
-
-    return { success: true, deletedUserId: userId };
+    return { success: true, deletionJobId };
   },
 });
 
@@ -436,15 +341,11 @@ export const listDeletedUsers = query({
     _id: v.id("deletedUsers"),
     _creationTime: v.number(),
     userId: v.string(),
-    name: v.optional(v.string()),
-    email: v.optional(v.string()),
-    username: v.optional(v.string()),
     role: v.optional(userRoleValidator),
     plan: v.optional(v.union(v.literal("free"), v.literal("premium"))),
     createdAt: v.optional(v.number()),
     deletedAt: v.number(),
-    deletedByUserId: v.optional(v.id("users")),
-    deletedByEmail: v.optional(v.string()),
+    deletedByUserId: v.optional(v.string()),
     deletionReason: v.optional(v.string()),
   })),
   handler: async (ctx) => {
@@ -454,15 +355,11 @@ export const listDeletedUsers = query({
       _id: record._id,
       _creationTime: record._creationTime,
       userId: record.userId,
-      name: record.name,
-      email: record.email,
-      username: record.username,
       role: record.role,
       plan: record.plan,
       createdAt: record.createdAt,
       deletedAt: record.deletedAt,
-      deletedByUserId: record.deletedByUserId,
-      deletedByEmail: record.deletedByEmail,
+      deletedByUserId: record.deletedByUserId ? String(record.deletedByUserId) : undefined,
       deletionReason: record.deletionReason,
     }));
   },

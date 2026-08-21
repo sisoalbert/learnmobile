@@ -14,6 +14,7 @@ import { userRoleValidator } from './roles';
 
 export default defineSchema({
   ...authTables,
+  authVerifiers: authTables.authVerifiers.index('sessionId', ['sessionId']),
   users: defineTable({
     name: v.optional(v.string()),
     image: v.optional(v.string()),
@@ -36,6 +37,7 @@ export default defineSchema({
     lastStreakEmailAt: v.optional(v.number()),
     nextStreakEmailAt: v.optional(v.number()),
     streakEmailVariantIndex: v.optional(v.number()),
+    deletionPendingAt: v.optional(v.number()),
     onboarding: v.optional(userOnboardingValidator),
   })
     .index('email', ['email'])
@@ -344,7 +346,7 @@ export default defineSchema({
     plan: v.optional(v.union(v.literal("free"), v.literal("premium"))),
     createdAt: v.optional(v.number()),
     deletedAt: v.number(),
-    deletedByUserId: v.optional(v.id("users")),
+    deletedByUserId: v.optional(v.union(v.id('users'), v.string())),
     deletedByEmail: v.optional(v.string()),
     deletionReason: v.optional(v.string()),
     snapshotJson: v.optional(v.string()),
@@ -353,9 +355,60 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_deleted_at", ["deletedAt"]),
   accountDeletionRequests: defineTable({
-    email: v.string(),
-    status: v.union(v.literal("pending"), v.literal("processed"), v.literal("rejected")),
+    email: v.optional(v.string()),
+    emailHash: v.optional(v.string()),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('pending_confirmation'),
+      v.literal('verified'),
+      v.literal('processed'),
+      v.literal('rejected'),
+    ),
+    confirmationTokenHash: v.optional(v.string()),
+    confirmationExpiresAt: v.optional(v.number()),
+    verifiedAt: v.optional(v.number()),
+    processedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_email", ["email"]),
+  })
+    .index('by_email', ['email'])
+    .index('by_email_status', ['email', 'status'])
+    .index('by_confirmation_token', ['confirmationTokenHash']),
+  accountDeletionRateLimits: defineTable({
+    identifierHash: v.string(),
+    windowStartedAt: v.number(),
+    requestCount: v.number(),
+    updatedAt: v.number(),
+  }).index('by_identifier', ['identifierHash']),
+  userDeletionJobs: defineTable({
+    userId: v.string(),
+    email: v.optional(v.string()),
+    role: v.optional(userRoleValidator),
+    plan: v.optional(v.union(v.literal('free'), v.literal('premium'))),
+    accountCreatedAt: v.optional(v.number()),
+    deletedByUserId: v.string(),
+    deletionReason: v.string(),
+    stage: v.union(
+      v.literal('authSessions'),
+      v.literal('authAccounts'),
+      v.literal('pushNotificationDeliveries'),
+      v.literal('exerciseAttempts'),
+      v.literal('lessonRewards'),
+      v.literal('lessonAttempts'),
+      v.literal('userCourseProgress'),
+      v.literal('dailyActivity'),
+      v.literal('streaks'),
+      v.literal('learnerRewards'),
+      v.literal('monthlyQuestProgress'),
+      v.literal('userAchievements'),
+      v.literal('subscriptions'),
+      v.literal('leaderboardEntries'),
+      v.literal('devices'),
+      v.literal('learnerSessions'),
+      v.literal('deletionRequests'),
+      v.literal('finalize'),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_user_id', ['userId']),
 });

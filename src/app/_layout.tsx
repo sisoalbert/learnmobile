@@ -165,6 +165,7 @@ function AppNavigator({ mobileAdsEnabled }: { mobileAdsEnabled: MobileAdsEnabled
           <Stack.Screen name="signin" />
           <Stack.Screen name="signup" />
           <Stack.Screen name="forgot-password" />
+          <Stack.Screen name="delete-account" />
         </Stack>
       </GestureHandlerRootView>
     </MobileAdsFeatureProvider>

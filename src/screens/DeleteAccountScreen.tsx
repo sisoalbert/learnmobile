@@ -67,9 +67,9 @@ export default function DeleteAccountScreen() {
         throw new Error('Failed to request account deletion');
       }
 
-      setStatusMessage('Your account deletion request has been received. We will process it shortly and notify you at ' + normalizedEmail + '.');
+      setStatusMessage('Check ' + normalizedEmail + ' for a confirmation link. The link expires in 30 minutes.');
       setEmail('');
-    } catch (error) {
+    } catch {
       setErrorMessage('Something went wrong. Please try again later.');
     } finally {
       setIsSubmitting(false);
@@ -96,7 +96,7 @@ export default function DeleteAccountScreen() {
                 Delete your account
               </Text>
               <Text selectable style={styles.description}>
-                Enter the email address associated with your account. We will review your request and delete your account data.
+                Enter the email address associated with your account. We will email you a link to verify ownership before the request can be processed.
               </Text>
             </View>
 
