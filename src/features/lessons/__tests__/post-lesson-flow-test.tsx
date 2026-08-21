@@ -19,7 +19,7 @@ import {
 
 const mockReplace = jest.fn();
 const mockClaimReward = jest.fn();
-let mockMobileAdsEnabled: boolean | undefined = true;
+let mockEndOfLessonAdsEnabled: boolean | undefined = true;
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace }),
@@ -27,7 +27,7 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/services/ads', () => ({
   showInterstitialAd: jest.fn(() => Promise.resolve()),
-  useMobileAdsEnabled: () => mockMobileAdsEnabled,
+  useEndOfLessonAdsEnabled: () => mockEndOfLessonAdsEnabled,
 }));
 
 jest.mock('convex/react', () => ({
@@ -39,7 +39,7 @@ const completedAt = Date.parse('2026-08-03T12:00:00Z');
 const mockShowInterstitialAd = showInterstitialAd as jest.MockedFunction<typeof showInterstitialAd>;
 const summary: LessonSummary = {
   attemptId: 'attempt-id' as Id<'lessonAttempts'>,
-  lessonId: 'beginner-course-1-lesson-1',
+  lessonId: 'beginner-course-1-lesson-2',
   score: 4,
   maximumScore: 4,
   earnedXp: 20,
@@ -72,7 +72,7 @@ describe('returning learner post-lesson flow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockMobileAdsEnabled = true;
+    mockEndOfLessonAdsEnabled = true;
     useSessionStore.getState().signOut();
     mockClaimReward.mockResolvedValue({ gemsEarned: 12, totalGems: 20, alreadyClaimed: false });
     useLearnerSessionStore.setState({
@@ -108,7 +108,7 @@ describe('returning learner post-lesson flow', () => {
   });
 
   test('skips the interstitial when mobile ads are disabled', async () => {
-    mockMobileAdsEnabled = false;
+    mockEndOfLessonAdsEnabled = false;
     render(<PostLessonAdScreen />);
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/lessons/premium'));
@@ -116,13 +116,13 @@ describe('returning learner post-lesson flow', () => {
   });
 
   test('waits for the mobile ads flag before starting the interstitial', async () => {
-    mockMobileAdsEnabled = undefined;
+    mockEndOfLessonAdsEnabled = undefined;
     const screen = render(<PostLessonAdScreen />);
 
     await waitFor(() => expect(mockShowInterstitialAd).not.toHaveBeenCalled());
     expect(mockReplace).not.toHaveBeenCalled();
 
-    mockMobileAdsEnabled = true;
+    mockEndOfLessonAdsEnabled = true;
     screen.rerender(<PostLessonAdScreen />);
 
     await waitFor(() => {
@@ -136,6 +136,16 @@ describe('returning learner post-lesson flow', () => {
     render(<PostLessonAdScreen />);
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/lessons/streak-increase'));
+    expect(mockShowInterstitialAd).not.toHaveBeenCalled();
+  });
+
+  test('bypasses the interstitial when the first lesson ad route is opened directly', async () => {
+    useLessonResultsStore.setState({
+      latestSummary: { ...summary, lessonId: 'beginner-course-1-lesson-1' },
+    });
+    render(<PostLessonAdScreen />);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/lessons/premium'));
     expect(mockShowInterstitialAd).not.toHaveBeenCalled();
   });
 

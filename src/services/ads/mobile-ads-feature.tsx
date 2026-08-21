@@ -3,27 +3,44 @@ import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { initializeAdMob } from './admob';
 
 export type MobileAdsEnabled = boolean | undefined;
+export type MobileAdsFlags = {
+  inLesson: MobileAdsEnabled;
+  endOfLesson: MobileAdsEnabled;
+};
 
-const MobileAdsFeatureContext = createContext<MobileAdsEnabled>(false);
+const DISABLED_MOBILE_ADS_FLAGS: MobileAdsFlags = {
+  inLesson: false,
+  endOfLesson: false,
+};
+
+const MobileAdsFeatureContext = createContext<MobileAdsFlags>(DISABLED_MOBILE_ADS_FLAGS);
 
 export function MobileAdsFeatureProvider({
   children,
-  enabled,
+  flags,
 }: {
   children: ReactNode;
-  enabled: MobileAdsEnabled;
+  flags?: MobileAdsFlags;
 }) {
+  const resolvedFlags = flags ?? { inLesson: undefined, endOfLesson: undefined };
+
   useEffect(() => {
-    if (enabled) void initializeAdMob().catch(() => undefined);
-  }, [enabled]);
+    if (resolvedFlags.inLesson || resolvedFlags.endOfLesson) {
+      void initializeAdMob().catch(() => undefined);
+    }
+  }, [resolvedFlags.endOfLesson, resolvedFlags.inLesson]);
 
   return (
-    <MobileAdsFeatureContext.Provider value={enabled}>
+    <MobileAdsFeatureContext.Provider value={resolvedFlags}>
       {children}
     </MobileAdsFeatureContext.Provider>
   );
 }
 
-export function useMobileAdsEnabled() {
-  return useContext(MobileAdsFeatureContext);
+export function useInLessonAdsEnabled() {
+  return useContext(MobileAdsFeatureContext).inLesson;
+}
+
+export function useEndOfLessonAdsEnabled() {
+  return useContext(MobileAdsFeatureContext).endOfLesson;
 }

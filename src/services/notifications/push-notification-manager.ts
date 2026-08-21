@@ -66,7 +66,6 @@ async function requestNotificationPermission() {
     await Notifications.setNotificationChannelAsync('learning', {
       name: 'Learning progress',
       importance: Notifications.AndroidImportance.HIGH,
-      sound: 'default',
       vibrationPattern: [0, 250, 250, 250],
     });
   }

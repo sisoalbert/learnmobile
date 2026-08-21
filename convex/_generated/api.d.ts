@@ -19,6 +19,7 @@ import type * as featureFlags from "../featureFlags.js";
 import type * as http from "../http.js";
 import type * as learning from "../learning.js";
 import type * as learningValidators from "../learningValidators.js";
+import type * as mobileAdFlags from "../mobileAdFlags.js";
 import type * as notifications from "../notifications.js";
 import type * as onboarding from "../onboarding.js";
 import type * as passwordReset from "../passwordReset.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   learning: typeof learning;
   learningValidators: typeof learningValidators;
+  mobileAdFlags: typeof mobileAdFlags;
   notifications: typeof notifications;
   onboarding: typeof onboarding;
   passwordReset: typeof passwordReset;

@@ -10,7 +10,7 @@ import { GuestSessionGate } from '@/features/learning-session/guest-session-gate
 import { feedback } from '@/services/feedback';
 import {
   MobileAdsFeatureProvider,
-  type MobileAdsEnabled,
+  type MobileAdsFlags,
 } from '@/services/ads';
 import {
   usePushNotificationObserver,
@@ -22,6 +22,7 @@ import { useOnboardingStore } from '@/state/onboarding-store';
 import { useUserProfileStore } from '@/state/user-profile-store';
 import { api } from '../../convex/_generated/api';
 import * as Sentry from '@sentry/react-native';
+import { AndroidSystemBar } from '@/common/android-system-bar';
 
 Sentry.init({
   dsn: 'https://35679436932e413d622d5a9e0b873249@o4511830907355136.ingest.us.sentry.io/4511830910697474',
@@ -55,7 +56,7 @@ const convex = convexUrl
 
 function RootLayout() {
   if (!convex) {
-    return <AppNavigator mobileAdsEnabled={false} />;
+    return <AppNavigator mobileAdsFlags={{ inLesson: false, endOfLesson: false }} />;
   }
 
   return (
@@ -78,7 +79,7 @@ function AuthenticatedAppNavigator() {
     api.users.current,
     !isLoading && convexAuthenticated ? {} : 'skip',
   );
-  const mobileAdsEnabled = useQuery(api.featureFlags.getMobileAdsEnabled);
+  const mobileAdsFlags = useQuery(api.featureFlags.getMobileAdsFlags);
 
   usePracticeReminderContext(Boolean(convexAuthenticated && currentUser), currentUser?.timezone);
 
@@ -119,7 +120,7 @@ function AuthenticatedAppNavigator() {
 
   return (
     <GuestSessionGate authenticated={convexAuthenticated} loading={isLoading}>
-      <AppNavigator mobileAdsEnabled={mobileAdsEnabled} />
+      <AppNavigator mobileAdsFlags={mobileAdsFlags} />
     </GuestSessionGate>
   );
 }
@@ -133,7 +134,7 @@ function useContentBootstrap() {
   }, [courses, ensureSeeded]);
 }
 
-function AppNavigator({ mobileAdsEnabled }: { mobileAdsEnabled: MobileAdsEnabled }) {
+function AppNavigator({ mobileAdsFlags }: { mobileAdsFlags?: MobileAdsFlags }) {
   usePushNotificationObserver();
 
   useEffect(() => {
@@ -142,8 +143,9 @@ function AppNavigator({ mobileAdsEnabled }: { mobileAdsEnabled: MobileAdsEnabled
   }, []);
 
   return (
-    <MobileAdsFeatureProvider enabled={mobileAdsEnabled}>
+    <MobileAdsFeatureProvider flags={mobileAdsFlags}>
       <GestureHandlerRootView style={{ flex: 1 }}>
+        <AndroidSystemBar />
         <Stack
           screenOptions={{
             headerShown: false,

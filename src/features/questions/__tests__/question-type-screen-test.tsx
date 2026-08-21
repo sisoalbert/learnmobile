@@ -9,7 +9,7 @@ import { QUESTION_FIXTURES_BY_TYPE } from '../question-fixtures';
 import { QuestionTypeScreen } from '../question-type-screen';
 import { parseTemplateLines } from '../question-ui';
 
-let mockMobileAdsEnabled: boolean | undefined = true;
+let mockInLessonAdsEnabled: boolean | undefined = true;
 
 jest.mock('@/services/ads', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -18,7 +18,7 @@ jest.mock('@/services/ads', () => {
   const { View } = require('react-native');
   return {
     AdMobBanner: () => React.createElement(View, { accessibilityLabel: 'Test AdMob banner' }),
-    useMobileAdsEnabled: () => mockMobileAdsEnabled,
+    useInLessonAdsEnabled: () => mockInLessonAdsEnabled,
   };
 });
 
@@ -27,25 +27,31 @@ describe('QuestionTypeScreen', () => {
 
   beforeEach(() => {
     feedbackPlay.mockClear();
-    mockMobileAdsEnabled = true;
+    mockInLessonAdsEnabled = true;
     useSessionStore.getState().signOut();
   });
 
   test('renders a banner for free learners', () => {
-    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} />);
+    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} showInLessonAd />);
 
     expect(screen.getByLabelText('Test AdMob banner')).toBeTruthy();
   });
 
   test('hides the banner for premium learners', () => {
     useSessionStore.getState().setAuthenticatedUser({ id: 'premium-user', plan: 'premium' });
-    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} />);
+    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} showInLessonAd />);
 
     expect(screen.queryByLabelText('Test AdMob banner')).toBeNull();
   });
 
   test.each([false, undefined])('hides the native banner when the mobile ads flag is %s', (enabled) => {
-    mockMobileAdsEnabled = enabled;
+    mockInLessonAdsEnabled = enabled;
+    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} showInLessonAd />);
+
+    expect(screen.queryByLabelText('Test AdMob banner')).toBeNull();
+  });
+
+  test('does not render a native banner without explicit lesson eligibility', () => {
     render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} />);
 
     expect(screen.queryByLabelText('Test AdMob banner')).toBeNull();
@@ -139,6 +145,7 @@ describe('QuestionTypeScreen', () => {
   });
 
   test('reveals hints and lets an incorrect learner retry', () => {
+    const dismissKeyboard = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => undefined);
     render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.multiple_choice} />);
     fireEvent.press(screen.getByText('Show a hint'));
     expect(screen.getByText(/Think about the role/)).toBeTruthy();
@@ -146,7 +153,17 @@ describe('QuestionTypeScreen', () => {
     fireEvent.press(screen.getByText('Check answer'));
     expect(screen.getByText('Not quite yet')).toBeTruthy();
     expect(feedbackPlay).toHaveBeenCalledWith('incorrectAnswer');
-    fireEvent.press(screen.getByText('Try again'));
+    fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
     expect(screen.queryByText('Not quite yet')).toBeNull();
+    expect(dismissKeyboard).toHaveBeenCalledTimes(2);
+    dismissKeyboard.mockRestore();
+  });
+
+  test('initializes an ordering question as a complete, incorrect permutation', () => {
+    render(<QuestionTypeScreen question={QUESTION_FIXTURES_BY_TYPE.arrange_in_order} />);
+
+    expect(screen.getByRole('button', { name: 'Check answer' })).toBeEnabled();
+    expect(screen.getAllByLabelText('Move up')[0]).toBeDisabled();
+    expect(screen.getAllByLabelText('Move down')[0]).toBeEnabled();
   });
 });

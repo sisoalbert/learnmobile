@@ -44,6 +44,7 @@ describe('Calendar screen', () => {
     expect(screen.getAllByLabelText(/Week \d of 6/)).toHaveLength(6);
     expect(screen.getByLabelText('Wednesday, August 5, completed')).toBeTruthy();
     expect(screen.getByLabelText('Monday, July 27, outside August')).toBeTruthy();
+    expect(screen.getByTestId('calendar-safe-area')).toHaveProp('edges', expect.objectContaining({ top: 'additive' }));
   });
 
   test('shows a loading state while activity restores', () => {
@@ -52,5 +53,6 @@ describe('Calendar screen', () => {
     render(<CalendarScreen />);
 
     expect(screen.getByText('Restoring your practice calendar…')).toBeTruthy();
+    expect(screen.getByTestId('calendar-safe-area')).toHaveProp('edges', expect.objectContaining({ top: 'additive' }));
   });
 });

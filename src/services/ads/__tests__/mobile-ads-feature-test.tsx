@@ -15,9 +15,12 @@ describe('MobileAdsFeatureProvider', () => {
     mockInitializeAdMob.mockClear();
   });
 
-  test.each([false, undefined])('does not initialize mobile ads when enabled is %s', (enabled) => {
+  test.each([
+    { inLesson: false, endOfLesson: false },
+    { inLesson: undefined, endOfLesson: undefined },
+  ])('does not initialize mobile ads when both placements are disabled or loading', (flags) => {
     render(
-      <MobileAdsFeatureProvider enabled={enabled}>
+      <MobileAdsFeatureProvider flags={flags}>
         <View />
       </MobileAdsFeatureProvider>,
     );
@@ -27,13 +30,23 @@ describe('MobileAdsFeatureProvider', () => {
 
   test('initializes mobile ads after the flag becomes enabled', async () => {
     const screen = render(
-      <MobileAdsFeatureProvider enabled={undefined}>
+      <MobileAdsFeatureProvider flags={{ inLesson: undefined, endOfLesson: undefined }}>
         <View />
       </MobileAdsFeatureProvider>,
     );
 
     screen.rerender(
-      <MobileAdsFeatureProvider enabled>
+      <MobileAdsFeatureProvider flags={{ inLesson: true, endOfLesson: false }}>
+        <View />
+      </MobileAdsFeatureProvider>,
+    );
+
+    await waitFor(() => expect(mockInitializeAdMob).toHaveBeenCalledTimes(1));
+  });
+
+  test('initializes mobile ads when only end-of-lesson ads are enabled', async () => {
+    render(
+      <MobileAdsFeatureProvider flags={{ inLesson: false, endOfLesson: true }}>
         <View />
       </MobileAdsFeatureProvider>,
     );

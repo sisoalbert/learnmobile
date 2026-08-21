@@ -52,6 +52,7 @@ describe('Quests screen', () => {
     expect(screen.getByLabelText('Extend your streak progress')).toBeTruthy();
     expect(screen.getByLabelText('August Quest progress')).toBeTruthy();
     expect(screen.getByText('Every lesson counts')).toBeTruthy();
+    expect(screen.getByTestId('quests-safe-area')).toHaveProp('edges', expect.objectContaining({ top: 'additive' }));
   });
 
   test('shows a loading state while quest progress restores', () => {
@@ -60,6 +61,7 @@ describe('Quests screen', () => {
     render(<QuestsScreen />);
 
     expect(screen.getByText('Restoring your quests…')).toBeTruthy();
+    expect(screen.getByTestId('quests-safe-area')).toHaveProp('edges', expect.objectContaining({ top: 'additive' }));
   });
 
   test('uses a safe zero state before the backend adds quest progress', () => {

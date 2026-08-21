@@ -1,6 +1,7 @@
 import { Lucide } from '@react-native-vector-icons/lucide';
 import { useConvexAuth, useQuery } from 'convex/react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../../convex/_generated/api';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
@@ -46,27 +47,29 @@ export default function CalendarScreen() {
   const compact = width < 520;
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-      style={styles.screen}
-    >
-      <View style={styles.heading}>
-        <Text selectable style={[styles.title, compact && styles.titleCompact]}>{monthTitle}</Text>
-        <Text accessibilityLabel={`${completedDateKeys.length} practice days this month`} selectable style={styles.summary}>
-          {completedDateKeys.length} practice day{completedDateKeys.length === 1 ? '' : 's'} this month
-        </Text>
-      </View>
+    <SafeAreaView edges={['top']} style={styles.safeArea} testID="calendar-safe-area">
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        style={styles.screen}
+      >
+        <View style={styles.heading}>
+          <Text selectable style={[styles.title, compact && styles.titleCompact]}>{monthTitle}</Text>
+          <Text accessibilityLabel={`${completedDateKeys.length} practice days this month`} selectable style={styles.summary}>
+            {completedDateKeys.length} practice day{completedDateKeys.length === 1 ? '' : 's'} this month
+          </Text>
+        </View>
 
-      <View accessibilityLabel={`${monthTitle} practice calendar, ${weeks.length} weeks`} style={styles.weekList}>
-        {weeks.map((days, index) => (
-          <View accessibilityLabel={`Week ${index + 1} of ${weeks.length}`} key={days[0].dateKey} style={[styles.weekCard, compact && styles.weekCardCompact]}>
-            {days.map((day) => <CalendarDay compact={compact} day={day} key={day.dateKey} monthTitle={monthTitle} />)}
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+        <View accessibilityLabel={`${monthTitle} practice calendar, ${weeks.length} weeks`} style={styles.weekList}>
+          {weeks.map((days, index) => (
+            <View accessibilityLabel={`Week ${index + 1} of ${weeks.length}`} key={days[0].dateKey} style={[styles.weekCard, compact && styles.weekCardCompact]}>
+              {days.map((day) => <CalendarDay compact={compact} day={day} key={day.dateKey} monthTitle={monthTitle} />)}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -94,14 +97,17 @@ function CalendarDay({ compact, day, monthTitle }: { compact: boolean; day: Mont
 
 function CalendarMessage({ message }: { message: string }) {
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.message} style={styles.screen}>
-      <ActivityIndicator color="#F29A32" size="large" />
-      <Text accessibilityLiveRegion="polite" selectable style={styles.messageText}>{message}</Text>
-    </ScrollView>
+    <SafeAreaView edges={['top']} style={styles.safeArea} testID="calendar-safe-area">
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.message} style={styles.screen}>
+        <ActivityIndicator color="#F29A32" size="large" />
+        <Text accessibilityLiveRegion="polite" selectable style={styles.messageText}>{message}</Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   screen: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { flexGrow: 1, width: '100%', maxWidth: 780, alignSelf: 'center', gap: 28, paddingHorizontal: 16, paddingTop: 64, paddingBottom: 36 },
   heading: { gap: 7 },

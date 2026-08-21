@@ -5,12 +5,11 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Pressable, ScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -29,7 +28,7 @@ import type {
   QuestionAnswer,
 } from './questions.types';
 import { feedback } from '@/services/feedback';
-import { AdMobBanner, useMobileAdsEnabled } from '@/services/ads';
+import { AdMobBanner, useInLessonAdsEnabled } from '@/services/ads';
 import { useSessionStore } from '@/state/sessionStore';
 
 export type QuestionTypeScreenProps = {
@@ -42,6 +41,7 @@ export type QuestionTypeScreenProps = {
   onContinue?: (result: LocalQuestionResult) => void;
   onBack?: () => void;
   customValidators?: CustomValidatorRegistry;
+  showInLessonAd?: boolean;
 };
 
 export function QuestionTypeScreen({
@@ -61,16 +61,19 @@ function QuestionTypeScreenContent({
   onContinue,
   onBack,
   customValidators = {},
+  showInLessonAd = false,
 }: QuestionTypeScreenProps) {
   const [answer, setAnswer] = useState<QuestionAnswer | undefined>(initialAnswer);
   const [result, setResult] = useState<LocalQuestionResult>();
   const [visibleHintIds, setVisibleHintIds] = useState<string[]>([]);
   const [attempts, setAttempts] = useState(0);
+  const [initializationAttempt, setInitializationAttempt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState('');
   const plan = useSessionStore((state) => state.user?.plan ?? 'free');
-  const mobileAdsEnabled = useMobileAdsEnabled();
-  const shouldShowBanner = process.env.EXPO_OS === 'web' || mobileAdsEnabled === true;
+  const inLessonAdsEnabled = useInLessonAdsEnabled();
+  const shouldShowBanner = process.env.EXPO_OS === 'web'
+    || (showInLessonAd && inLessonAdsEnabled === true);
   const meta = QUESTION_TYPE_META[question.type];
   const invalidInitialAnswer = !answerMatchesQuestion(question, initialAnswer);
 
@@ -100,6 +103,7 @@ function QuestionTypeScreenContent({
     setAnswer(undefined);
     setResult(undefined);
     setSubmissionError('');
+    setInitializationAttempt((value) => value + 1);
   };
   const showHint = () => {
     const nextHint = question.hints?.find((hint) => !visibleHintIds.includes(hint.id));
@@ -174,7 +178,7 @@ function QuestionTypeScreenContent({
             {question.instruction ? <Text selectable style={styles.instruction}>{question.instruction}</Text> : null}
           </View>
 
-          <QuestionInteraction question={question} answer={answer} disabled={Boolean(result)} onAnswerChange={changeAnswer} customValidators={customValidators} />
+          <QuestionInteraction question={question} answer={answer} disabled={Boolean(result)} initializationAttempt={initializationAttempt} onAnswerChange={changeAnswer} customValidators={customValidators} />
 
           {question.hints?.length ? (
             <View style={styles.hints}>
@@ -238,12 +242,12 @@ function QuestionTypeScreenContent({
 
 function PrimaryButton({ label, disabled, color = QUESTION_COLORS.blue, onPress }: { label: string; disabled?: boolean; color?: string; onPress?: () => void }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={() => {
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} hitSlop={4} onPress={() => {
       Keyboard.dismiss();
       feedback.play('buttonTap');
       onPress?.();
     }} style={({ pressed }) => [styles.primaryButton, { backgroundColor: disabled ? '#D8DCE3' : color, boxShadow: disabled ? '0 4px 0 #BEC3CC' : `0 4px 0 ${color === QUESTION_COLORS.blue ? QUESTION_COLORS.blueDark : color}` }, pressed && !disabled && styles.buttonPressed]}>
-      <Text selectable style={styles.primaryButtonText}>{label}</Text>
+      <Text style={styles.primaryButtonText}>{label}</Text>
     </Pressable>
   );
 }
@@ -282,7 +286,7 @@ const styles = StyleSheet.create({
   explanationTitle: { color: QUESTION_COLORS.ink, fontSize: 13, fontWeight: '800' },
   explanationText: { color: QUESTION_COLORS.muted, fontSize: 13, lineHeight: 19 },
   footer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: QUESTION_COLORS.border, backgroundColor: QUESTION_COLORS.surface },
-  primaryButton: { minHeight: 54, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, borderRadius: 16, borderCurve: 'continuous' },
+  primaryButton: { width: '100%', minHeight: 54, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, borderRadius: 16, borderCurve: 'continuous' },
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.4 },
   buttonPressed: { transform: [{ translateY: 2 }], opacity: 0.88 },
   bottomSpacer: { height: 8 },

@@ -86,8 +86,10 @@
     "bandroid": "eas build --platform android",
     "bandroidl": "eas build --platform android --local",
     "clean": "npx expo prebuild --clean",
+    "cleana": "npx expo prebuild --clean -p android",
     "lint": "expo lint",
-    "test": "jest --runInBand --no-watchman"
+    "test": "jest --runInBand --no-watchman",
+    "icons:android": "node ./scripts/generate-android-icons.mjs"
   },
   "jest": {
     "preset": "jest-expo",

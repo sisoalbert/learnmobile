@@ -13,12 +13,13 @@ import { useLessonResultsStore } from '@/state/lesson-results-store';
 import { QuestProgressCard } from '@/features/quests/quest-progress-card';
 import { isInvalidLearnerCredential } from '@/features/learning-session/guest-session-errors';
 import { feedback } from '@/services/feedback';
-import { showInterstitialAd, useMobileAdsEnabled } from '@/services/ads';
+import { showInterstitialAd, useEndOfLessonAdsEnabled } from '@/services/ads';
 import { WebInterstitialCard } from '@/services/ads/web-ad-components';
 import WelcomeAnimation from '@/common/WelcomeAnimation';
 import { useSessionStore } from '@/state/sessionStore';
 import { api } from '../../../convex/_generated/api';
 import { buildUtcWeekDays } from './utc-week';
+import { isFirstLesson } from './lesson-constants';
 
 export const STREAK_INTRO_DURATION_MS = 1800;
 
@@ -120,7 +121,7 @@ export function PostLessonAdScreen() {
   const router = useRouter();
   const summary = usePostLessonSummary();
   const plan = useSessionStore((state) => state.user?.plan ?? 'free');
-  const mobileAdsEnabled = useMobileAdsEnabled();
+  const endOfLessonAdsEnabled = useEndOfLessonAdsEnabled();
   const hasStartedInterstitial = useRef(false);
   const isWeb = process.env.EXPO_OS === 'web';
 
@@ -134,11 +135,16 @@ export function PostLessonAdScreen() {
     }
 
     if (isWeb) return;
-    if (mobileAdsEnabled === undefined) return;
+    if (isFirstLesson(summary.lessonId)) {
+      hasStartedInterstitial.current = true;
+      router.replace('/lessons/premium');
+      return;
+    }
+    if (endOfLessonAdsEnabled === undefined) return;
 
     hasStartedInterstitial.current = true;
 
-    if (!mobileAdsEnabled) {
+    if (!endOfLessonAdsEnabled) {
       router.replace('/lessons/premium');
       return;
     }
@@ -146,7 +152,7 @@ export function PostLessonAdScreen() {
     void showInterstitialAd().catch(() => undefined).finally(() => {
       router.replace('/lessons/premium');
     });
-  }, [isWeb, mobileAdsEnabled, plan, router, summary]);
+  }, [endOfLessonAdsEnabled, isWeb, plan, router, summary]);
 
   if (!summary) return null;
 
@@ -166,7 +172,8 @@ export function PostLessonAdScreen() {
     );
   }
 
-  if (plan !== 'premium' && mobileAdsEnabled !== true) return null;
+  if (isFirstLesson(summary.lessonId)) return null;
+  if (plan !== 'premium' && endOfLessonAdsEnabled !== true) return null;
 
   return (
     <PostLessonShell

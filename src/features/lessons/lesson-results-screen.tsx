@@ -11,6 +11,7 @@ import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { useSessionStore } from '@/state/sessionStore';
 import { feedback } from '@/services/feedback';
+import { isFirstLesson } from './lesson-constants';
 
 export default function LessonResultsScreen() {
   const router = useRouter();
@@ -40,6 +41,10 @@ export default function LessonResultsScreen() {
     feedback.play('buttonTap');
     if (!onboardingCompleted || !goalCommitted) {
       router.replace('/learning-goal' as never);
+      return;
+    }
+    if (process.env.EXPO_OS !== 'web' && plan !== 'premium' && isFirstLesson(summary.lessonId)) {
+      router.replace('/lessons/premium' as never);
       return;
     }
     router.replace((plan === 'premium' ? '/lessons/streak-increase' : '/lessons/ad') as never);

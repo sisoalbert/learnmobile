@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useConvexAuth, useQuery } from 'convex/react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '../../../convex/_generated/api';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
@@ -42,44 +43,46 @@ export default function QuestsScreen() {
   });
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-      style={styles.screen}
-    >
-      <View style={styles.hero}>
-        <Text accessibilityLabel={`${quest.questPoints} of ${quest.questTarget} quest points`} selectable style={styles.eyebrow}>
-          {quest.questPoints} / {quest.questTarget} QUEST POINTS
-        </Text>
-        <View style={styles.mascotHalo}>
-          <Image
-            accessibilityLabel="Rex, the Learn Expo quest guide"
-            contentFit="contain"
-            source={require('@/assets/logo.png')}
-            style={styles.mascot}
-          />
-        </View>
-        <View style={styles.heroCopy}>
-          <Text selectable style={styles.title}>{monthTitle} Quest</Text>
-          <Text selectable style={styles.subtitle}>
-            Complete learning goals, build your streak, and move every long-term reward forward.
+    <SafeAreaView edges={['top']} style={styles.safeArea} testID="quests-safe-area">
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        style={styles.screen}
+      >
+        <View style={styles.hero}>
+          <Text accessibilityLabel={`${quest.questPoints} of ${quest.questTarget} quest points`} selectable style={styles.eyebrow}>
+            {quest.questPoints} / {quest.questTarget} QUEST POINTS
           </Text>
+          <View style={styles.mascotHalo}>
+            <Image
+              accessibilityLabel="Rex, the Learn Expo quest guide"
+              contentFit="contain"
+              source={require('@/assets/logo.png')}
+              style={styles.mascot}
+            />
+          </View>
+          <View style={styles.heroCopy}>
+            <Text selectable style={styles.title}>{monthTitle} Quest</Text>
+            <Text selectable style={styles.subtitle}>
+              Complete learning goals, build your streak, and move every long-term reward forward.
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <View accessibilityLabel="Quest progress" style={styles.questList}>
-        <QuestProgressCard color="#F28B19" icon="flame" label="Extend your streak" target={quest.streakTarget} value={quest.streakExtensions} />
-        <QuestProgressCard color="#2289FD" icon="book-open-check" label="Complete 2 lessons" target={quest.lessonsTarget} value={quest.lessonsCompleted} />
-        <QuestProgressCard color="#27A844" icon="target" label="Score 80% in 3 lessons" target={quest.highAccuracyTarget} value={quest.highAccuracyLessons} />
-        <QuestProgressCard color="#8C5BD6" icon="calendar-days" label={`${monthTitle} Quest`} target={quest.questTarget} value={quest.questPoints} />
-      </View>
+        <View accessibilityLabel="Quest progress" style={styles.questList}>
+          <QuestProgressCard color="#F28B19" icon="flame" label="Extend your streak" target={quest.streakTarget} value={quest.streakExtensions} />
+          <QuestProgressCard color="#2289FD" icon="book-open-check" label="Complete 2 lessons" target={quest.lessonsTarget} value={quest.lessonsCompleted} />
+          <QuestProgressCard color="#27A844" icon="target" label="Score 80% in 3 lessons" target={quest.highAccuracyTarget} value={quest.highAccuracyLessons} />
+          <QuestProgressCard color="#8C5BD6" icon="calendar-days" label={`${monthTitle} Quest`} target={quest.questTarget} value={quest.questPoints} />
+        </View>
 
-      <View style={styles.rewardNote}>
-        <Text selectable style={styles.rewardTitle}>Every lesson counts</Text>
-        <Text selectable style={styles.rewardText}>Finish a lesson to add one quest point and refresh these goals automatically.</Text>
-      </View>
-    </ScrollView>
+        <View style={styles.rewardNote}>
+          <Text selectable style={styles.rewardTitle}>Every lesson counts</Text>
+          <Text selectable style={styles.rewardText}>Finish a lesson to add one quest point and refresh these goals automatically.</Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -99,14 +102,17 @@ function emptyMonthlyQuest(monthKey: string): MonthlyQuest {
 
 function QuestMessage({ loading = false, message }: { loading?: boolean; message: string }) {
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.message} style={styles.screen}>
-      {loading ? <ActivityIndicator color="#2289FD" size="large" /> : null}
-      <Text accessibilityLiveRegion="polite" selectable style={styles.messageText}>{message}</Text>
-    </ScrollView>
+    <SafeAreaView edges={['top']} style={styles.safeArea} testID="quests-safe-area">
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.message} style={styles.screen}>
+        {loading ? <ActivityIndicator color="#2289FD" size="large" /> : null}
+        <Text accessibilityLiveRegion="polite" selectable style={styles.messageText}>{message}</Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   screen: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { flexGrow: 1, width: '100%', maxWidth: 700, alignSelf: 'center', gap: 24, paddingHorizontal: 16, paddingTop: 22, paddingBottom: 32 },
   hero: { alignItems: 'center', gap: 17 },

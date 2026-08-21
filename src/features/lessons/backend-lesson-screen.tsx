@@ -11,6 +11,7 @@ import { QuestionTypeScreen } from '@/features/questions/question-type-screen';
 import type { LocalQuestionResult, Question, QuestionAnswer } from '@/features/questions/questions.types';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
 import { type LessonSummary, useLessonResultsStore } from '@/state/lesson-results-store';
+import { isFirstLesson } from './lesson-constants';
 
 function uniqueKey(prefix: string) {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
@@ -139,6 +140,7 @@ export function BackendLessonScreen({ lessonKey }: { lessonKey: string }) {
       question={question}
       sequence={{ index: currentQuestionIndex + 1, total: questions.length }}
       onBack={() => router.replace('/home')}
+      showInLessonAd={!isFirstLesson(lesson.key)}
       onSubmitAnswer={submitAnswer}
       onResult={(result) => recordResult(question, result)}
       onContinue={() => void continueLesson()}

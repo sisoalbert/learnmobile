@@ -1,10 +1,12 @@
 import { Lucide } from '@react-native-vector-icons/lucide';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 
 import { feedback } from '@/services/feedback';
 import { parseCodeToRenderTree, validateChallengeRequirements, validateRenderRules } from './code-preview';
 import { QUESTION_COLORS, QUESTION_INPUT_ACCESSORY_ID } from './question-constants';
+import { createInitialArrangeOrder } from './arrange-order';
 import {
   CodeCard,
   CodeFilesEditor,
@@ -56,6 +58,7 @@ export type QuestionInteractionProps<Q, A> = {
   question: Q;
   answer?: A;
   disabled?: boolean;
+  initializationAttempt?: number;
   onAnswerChange: (answer: A) => void;
   customValidators?: CustomValidatorRegistry;
 };
@@ -134,9 +137,18 @@ function moveItem<T>(items: T[], from: number, to: number): T[] {
   return next;
 }
 
-export function ArrangeInOrderQuestionScreen({ question, answer, disabled, onAnswerChange }: QuestionInteractionProps<ArrangeInOrderQuestion, ArrangeInOrderAnswer>) {
-  const ids = answer?.orderedItemIds.length ? answer.orderedItemIds : question.items.map((item) => item.id);
+export function ArrangeInOrderQuestionScreen({ question, answer, disabled, initializationAttempt = 0, onAnswerChange }: QuestionInteractionProps<ArrangeInOrderQuestion, ArrangeInOrderAnswer>) {
+  const initialOrder = useMemo(
+    () => createInitialArrangeOrder(question, initializationAttempt),
+    [initializationAttempt, question],
+  );
+  const ids = answer?.orderedItemIds.length ? answer.orderedItemIds : initialOrder;
   const move = useCallback((from: number, to: number) => onAnswerChange({ orderedItemIds: moveItem(ids, from, to) }), [ids, onAnswerChange]);
+
+  useEffect(() => {
+    if (!answer?.orderedItemIds.length) onAnswerChange({ orderedItemIds: initialOrder });
+  }, [answer?.orderedItemIds.length, initialOrder, onAnswerChange]);
+
   return <View style={[styles.list, question.direction === 'horizontal' && styles.horizontalOrder]}>{ids.map((id, index) => {
     const item = question.items.find((candidate) => candidate.id === id);
     return <DraggableRow key={id} index={index} count={ids.length} direction={question.direction} disabled={disabled} onMove={move}><Text selectable style={styles.rowLabel}><Text style={styles.orderNumber}>{index + 1}  </Text>{item?.content}</Text>{item?.code ? <Text selectable style={styles.miniCode}>{item.code}</Text> : null}</DraggableRow>;
@@ -354,14 +366,14 @@ export function BuildAndRenderQuestionScreen({ question, answer, disabled, onAns
   );
 }
 
-export function QuestionInteraction({ question, answer, disabled, onAnswerChange, customValidators }: { question: Question; answer?: QuestionAnswer; disabled?: boolean; onAnswerChange: (answer: QuestionAnswer) => void; customValidators?: CustomValidatorRegistry }) {
+export function QuestionInteraction({ question, answer, disabled, initializationAttempt, onAnswerChange, customValidators }: { question: Question; answer?: QuestionAnswer; disabled?: boolean; initializationAttempt?: number; onAnswerChange: (answer: QuestionAnswer) => void; customValidators?: CustomValidatorRegistry }) {
   switch (question.type) {
     case 'multiple_choice': return <MultipleChoiceQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;
     case 'multi_select': return <MultiSelectQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;
     case 'true_false': return <TrueFalseQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;
     case 'fill_in_the_blank': return <FillInTheBlankQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;
     case 'match_pairs': return <MatchPairsQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;
-    case 'arrange_in_order': return <ArrangeInOrderQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;
+    case 'arrange_in_order': return <ArrangeInOrderQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} initializationAttempt={initializationAttempt} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;
     case 'complete_code': return <CompleteCodeQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;
     case 'find_error': return <FindErrorQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;
     case 'predict_output': return <PredictOutputQuestionScreen question={question} answer={answer?.type === question.type ? answer.answer : undefined} disabled={disabled} onAnswerChange={(value) => onAnswerChange({ type: question.type, answer: value })} />;

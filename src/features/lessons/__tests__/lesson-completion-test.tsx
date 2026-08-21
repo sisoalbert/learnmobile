@@ -77,6 +77,21 @@ describe('lesson completion flow', () => {
     expect(mockReplace).toHaveBeenCalledWith('/lessons/ad');
   });
 
+  test('skips native ads when a returning learner repeats the first lesson', () => {
+    useOnboardingStore.setState({ isCompleted: true });
+    useLearningGoalStore.setState({ isCommitted: true, selectedStreakGoal: 5 });
+    useLessonResultsStore.setState((state) => ({
+      latestSummary: state.latestSummary
+        ? { ...state.latestSummary, lessonId: 'beginner-course-1-lesson-1' }
+        : null,
+    }));
+    const screen = render(<LessonResultsScreen />);
+
+    fireEvent.press(screen.getByText('Claim XP'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/lessons/premium');
+  });
+
   test('lets returning premium learners skip monetization placeholders', () => {
     useOnboardingStore.setState({ isCompleted: true });
     useLearningGoalStore.setState({ isCommitted: true, selectedStreakGoal: 5 });
