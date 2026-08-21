@@ -13,7 +13,7 @@ export default {
   expo: {
     name: 'Learn Expo',
     slug: 'learn',
-    version: '1.0.7',
+    version: '1.0.8',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'learn',
@@ -34,6 +34,7 @@ export default {
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
+      softwareKeyboardLayoutMode: 'pan',
       package: 'com.questerstudios.learn',
       googleServicesFile: './google-services.json',
       intentFilters: [

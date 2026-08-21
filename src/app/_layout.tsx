@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { authTokenStorage } from '@/auth/token-storage';
 import { GuestSessionGate } from '@/features/learning-session/guest-session-gate';
@@ -145,30 +146,32 @@ function AppNavigator({ mobileAdsFlags }: { mobileAdsFlags?: MobileAdsFlags }) {
   return (
     <MobileAdsFeatureProvider flags={mobileAdsFlags}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <AndroidSystemBar />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="welcome" />
-          <Stack.Screen name="onboarding" />
-          <Stack.Screen name="learning-goal" />
-          <Stack.Screen name="create-profile" />
-          <Stack.Screen name="terms" />
-          <Stack.Screen name="privacy" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="todo" />
-          <Stack.Screen name="learning-paths" />
-          <Stack.Screen name="courses/[courseKey]" />
-          <Stack.Screen name="question-types" />
+        <KeyboardProvider>
+          <AndroidSystemBar />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="welcome" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="learning-goal" />
+            <Stack.Screen name="create-profile" />
+            <Stack.Screen name="terms" />
+            <Stack.Screen name="privacy" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="todo" />
+            <Stack.Screen name="learning-paths" />
+            <Stack.Screen name="courses/[courseKey]" />
+            <Stack.Screen name="question-types" />
 
-          <Stack.Screen name="signin" />
-          <Stack.Screen name="signup" />
-          <Stack.Screen name="forgot-password" />
-          <Stack.Screen name="delete-account" />
-        </Stack>
+            <Stack.Screen name="signin" />
+            <Stack.Screen name="signup" />
+            <Stack.Screen name="forgot-password" />
+            <Stack.Screen name="delete-account" />
+          </Stack>
+        </KeyboardProvider>
       </GestureHandlerRootView>
     </MobileAdsFeatureProvider>
   );

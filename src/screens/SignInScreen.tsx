@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/common';
@@ -93,92 +94,98 @@ export default function SignInScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header onBack={() => router.replace('/')} />
-      <View style={styles.content}>
-        <Image
-          source={require('@/assets/logo.png')}
-          style={styles.logo}
-          contentFit="contain"
-        />
-        
-        <View style={styles.form}>
-          {__DEV__ ? (
-            <Text selectable style={styles.devModeBadge}>
-              {deploymentName}
-            </Text>
-          ) : null}
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#9AA2B1"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            editable={!isSubmitting}
-            value={email}
-            onChangeText={(value) => {
-              setEmail(value);
-              setErrorMessage('');
-            }}
+      <KeyboardAwareScrollView
+        bottomOffset={32}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        style={styles.keyboardView}
+      >
+          <Image
+            source={require('@/assets/logo.png')}
+            style={styles.logo}
+            contentFit="contain"
           />
-          <View style={styles.passwordContainer}>
+          
+          <View style={styles.form}>
+            {__DEV__ ? (
+              <Text selectable style={styles.devModeBadge}>
+                {deploymentName}
+              </Text>
+            ) : null}
             <TextInput
-              style={styles.passwordInput}
-              placeholder="Password"
+              style={styles.input}
+              placeholder="Email"
               placeholderTextColor="#9AA2B1"
-              secureTextEntry={!showPassword}
+              keyboardType="email-address"
               autoCapitalize="none"
-              autoComplete="current-password"
+              autoComplete="email"
               editable={!isSubmitting}
-              value={password}
+              value={email}
               onChangeText={(value) => {
-                setPassword(value);
+                setEmail(value);
                 setErrorMessage('');
               }}
-              onSubmitEditing={() => void handleSignIn()}
             />
-            <Pressable
-              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => setShowPassword((prev) => !prev)}
-              style={({ pressed }) => [styles.eyeButton, pressed && styles.eyeButtonPressed]}
-            >
-              <Lucide
-                name={showPassword ? 'eye-off' : 'eye'}
-                size={22}
-                color="#9AA2B1"
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                placeholderTextColor="#9AA2B1"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoComplete="current-password"
+                editable={!isSubmitting}
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  setErrorMessage('');
+                }}
+                onSubmitEditing={() => void handleSignIn()}
               />
+              <Pressable
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => setShowPassword((prev) => !prev)}
+                style={({ pressed }) => [styles.eyeButton, pressed && styles.eyeButtonPressed]}
+              >
+                <Lucide
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color="#9AA2B1"
+                />
+              </Pressable>
+            </View>
+
+            <Link href="/forgot-password" style={styles.forgotPasswordLink}>
+              Forgot password?
+            </Link>
+
+            {errorMessage ? (
+              <Text accessibilityRole="alert" selectable style={styles.errorText}>
+                {errorMessage}
+              </Text>
+            ) : null}
+            
+            <Pressable 
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.primaryButton,
+                (!isFormValid || isSubmitting) && styles.primaryButtonDisabled,
+                pressed && isFormValid && !isSubmitting && styles.primaryButtonPressed,
+              ]}
+              disabled={!isFormValid || isSubmitting}
+              onPress={() => void handleSignIn()}
+            >
+              <Text selectable style={styles.primaryButtonText}>
+                {isSubmitting ? 'Signing in…' : 'Sign In'}
+              </Text>
             </Pressable>
+
           </View>
-
-          <Link href="/forgot-password" style={styles.forgotPasswordLink}>
-            Forgot password?
-          </Link>
-
-          {errorMessage ? (
-            <Text accessibilityRole="alert" selectable style={styles.errorText}>
-              {errorMessage}
-            </Text>
-          ) : null}
-          
-          <Pressable 
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.primaryButton,
-              (!isFormValid || isSubmitting) && styles.primaryButtonDisabled,
-              pressed && isFormValid && !isSubmitting && styles.primaryButtonPressed,
-            ]}
-            disabled={!isFormValid || isSubmitting}
-            onPress={() => void handleSignIn()}
-          >
-            <Text selectable style={styles.primaryButtonText}>
-              {isSubmitting ? 'Signing in…' : 'Sign In'}
-            </Text>
-          </Pressable>
-
-        </View>
-      </View>
-    </SafeAreaView>
+        </KeyboardAwareScrollView>
+      </SafeAreaView>
   );
 }
 
@@ -187,15 +194,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  content: {
+  keyboardView: {
     flex: 1,
+  },
+  content: {
+    flexGrow: 1,
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    marginTop: -40,
+    paddingVertical: 24,
   },
   logo: {
     width: 150,

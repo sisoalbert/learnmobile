@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/react-native';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View, StyleSheet, TextInput, Pressable, Text } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Lucide } from '@react-native-vector-icons/lucide';
@@ -80,93 +81,99 @@ export default function SignUpScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header onBack={() => router.replace('/')} />
-      <View style={styles.content}>
-        <Image
-          source={require('@/assets/logo.png')}
-          style={styles.logo}
-          contentFit="contain"
-        />
-        
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#9AA2B1"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            editable={!isSubmitting}
-            value={email}
-            onChangeText={(value) => {
-              setEmail(value);
-              setErrorMessage('');
-            }}
+      <KeyboardAwareScrollView
+        bottomOffset={32}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        style={styles.keyboardView}
+      >
+          <Image
+            source={require('@/assets/logo.png')}
+            style={styles.logo}
+            contentFit="contain"
           />
-          <View style={styles.passwordContainer}>
+          
+          <View style={styles.form}>
             <TextInput
-              style={styles.passwordInput}
-              placeholder="Password"
+              style={styles.input}
+              placeholder="Email"
               placeholderTextColor="#9AA2B1"
-              secureTextEntry={!showPassword}
+              keyboardType="email-address"
               autoCapitalize="none"
-              autoComplete="new-password"
+              autoComplete="email"
               editable={!isSubmitting}
-              value={password}
+              value={email}
               onChangeText={(value) => {
-                setPassword(value);
+                setEmail(value);
                 setErrorMessage('');
               }}
-              onSubmitEditing={() => void handleSignUp()}
             />
-            <Pressable
-              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => setShowPassword((prev) => !prev)}
-              style={({ pressed }) => [styles.eyeButton, pressed && styles.eyeButtonPressed]}
-            >
-              <Lucide
-                name={showPassword ? 'eye-off' : 'eye'}
-                size={22}
-                color="#9AA2B1"
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                placeholderTextColor="#9AA2B1"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoComplete="new-password"
+                editable={!isSubmitting}
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  setErrorMessage('');
+                }}
+                onSubmitEditing={() => void handleSignUp()}
               />
+              <Pressable
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => setShowPassword((prev) => !prev)}
+                style={({ pressed }) => [styles.eyeButton, pressed && styles.eyeButtonPressed]}
+              >
+                <Lucide
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color="#9AA2B1"
+                />
+              </Pressable>
+            </View>
+
+            <Text selectable style={styles.passwordHint}>
+              Use at least 8 characters.
+            </Text>
+
+            {errorMessage ? (
+              <Text accessibilityRole="alert" selectable style={styles.errorText}>
+                {errorMessage}
+              </Text>
+            ) : null}
+            
+            <Pressable 
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.primaryButton,
+                (!isFormValid || isSubmitting) && styles.primaryButtonDisabled,
+                pressed && isFormValid && !isSubmitting && styles.primaryButtonPressed,
+              ]}
+              disabled={!isFormValid || isSubmitting}
+              onPress={() => void handleSignUp()}
+            >
+              <Text selectable style={styles.primaryButtonText}>
+                {isSubmitting ? 'Creating account…' : 'Sign Up'}
+              </Text>
             </Pressable>
+
+            <View style={styles.alternateAction}>
+              <Text selectable style={styles.alternateText}>Already have an account?</Text>
+              <Link href="/signin" replace style={styles.alternateLink}>
+                Sign in
+              </Link>
+            </View>
           </View>
-
-          <Text selectable style={styles.passwordHint}>
-            Use at least 8 characters.
-          </Text>
-
-          {errorMessage ? (
-            <Text accessibilityRole="alert" selectable style={styles.errorText}>
-              {errorMessage}
-            </Text>
-          ) : null}
-          
-          <Pressable 
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.primaryButton,
-              (!isFormValid || isSubmitting) && styles.primaryButtonDisabled,
-              pressed && isFormValid && !isSubmitting && styles.primaryButtonPressed,
-            ]}
-            disabled={!isFormValid || isSubmitting}
-            onPress={() => void handleSignUp()}
-          >
-            <Text selectable style={styles.primaryButtonText}>
-              {isSubmitting ? 'Creating account…' : 'Sign Up'}
-            </Text>
-          </Pressable>
-
-          <View style={styles.alternateAction}>
-            <Text selectable style={styles.alternateText}>Already have an account?</Text>
-            <Link href="/signin" replace style={styles.alternateLink}>
-              Sign in
-            </Link>
-          </View>
-        </View>
-      </View>
-    </SafeAreaView>
+        </KeyboardAwareScrollView>
+      </SafeAreaView>
   );
 }
 
@@ -175,15 +182,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  content: {
+  keyboardView: {
     flex: 1,
+  },
+  content: {
+    flexGrow: 1,
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    marginTop: -40,
+    paddingVertical: 24,
   },
   logo: {
     width: 150,

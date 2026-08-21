@@ -2,9 +2,7 @@ import { Lucide } from '@react-native-vector-icons/lucide';
 import { Image } from 'expo-image';
 import type { PropsWithChildren, ReactNode } from 'react';
 import {
-  KeyboardAvoidingView,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,6 +10,7 @@ import {
   type KeyboardTypeOptions,
   type TextInputProps,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -68,82 +67,79 @@ export function CreateProfileShell({
 }: FormShellProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardAvoidingView}
-      >
-        <View style={styles.page}>
-          {navigation && onNavigationPress && progress !== undefined ? (
-            <View style={styles.header}>
-              <Pressable
-                accessibilityLabel={navigation === 'back' ? 'Go back' : 'Close profile creation'}
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={onNavigationPress}
-                style={({ pressed }) => [styles.navigationButton, pressed && styles.controlPressed]}
-              >
-                <Lucide name={navigation === 'back' ? 'arrow-left' : 'x'} size={25} color={COLORS.muted} />
-              </Pressable>
-              <View
-                accessibilityLabel={`${Math.round(progress * 100)}% of profile creation complete`}
-                accessibilityRole="progressbar"
-                accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
-                style={styles.progressTrack}
-              >
-                <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-              </View>
+      <View style={styles.page}>
+        {navigation && onNavigationPress && progress !== undefined ? (
+          <View style={styles.header}>
+            <Pressable
+              accessibilityLabel={navigation === 'back' ? 'Go back' : 'Close profile creation'}
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={onNavigationPress}
+              style={({ pressed }) => [styles.navigationButton, pressed && styles.controlPressed]}
+            >
+              <Lucide name={navigation === 'back' ? 'arrow-left' : 'x'} size={25} color={COLORS.muted} />
+            </Pressable>
+            <View
+              accessibilityLabel={`${Math.round(progress * 100)}% of profile creation complete`}
+              accessibilityRole="progressbar"
+              accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
+              style={styles.progressTrack}
+            >
+              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
             </View>
-          ) : (
-            <View style={styles.minimalHeader} />
-          )}
+          </View>
+        ) : (
+          <View style={styles.minimalHeader} />
+        )}
 
-          <ScrollView
-            contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={[styles.scrollContent, centered && styles.scrollContentCentered]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+        <KeyboardAwareScrollView
+          bottomOffset={32}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={[styles.scrollContent, centered && styles.scrollContentCentered]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={styles.keyboardAvoidingView}
+        >
+          {children}
+        </KeyboardAwareScrollView>
+
+        <View style={styles.footer}>
+          {legal && onTermsPress && onPrivacyPress ? (
+            <LegalText onTermsPress={onTermsPress} onPrivacyPress={onPrivacyPress} />
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: primaryDisabled }}
+            disabled={primaryDisabled}
+            onPress={() => {
+              feedback.play(primaryFeedback);
+              onPrimaryPress();
+            }}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              primaryDisabled && styles.primaryButtonDisabled,
+              pressed && !primaryDisabled && styles.primaryButtonPressed,
+            ]}
           >
-            {children}
-          </ScrollView>
+            <Text selectable style={styles.primaryButtonText}>{primaryLabel}</Text>
+          </Pressable>
 
-          <View style={styles.footer}>
-            {legal && onTermsPress && onPrivacyPress ? (
-              <LegalText onTermsPress={onTermsPress} onPrivacyPress={onPrivacyPress} />
-            ) : null}
-
+          {secondaryLabel && onSecondaryPress ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: primaryDisabled }}
-              disabled={primaryDisabled}
+              hitSlop={10}
               onPress={() => {
-                feedback.play(primaryFeedback);
-                onPrimaryPress();
+                feedback.play(secondaryFeedback);
+                onSecondaryPress();
               }}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                primaryDisabled && styles.primaryButtonDisabled,
-                pressed && !primaryDisabled && styles.primaryButtonPressed,
-              ]}
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.controlPressed]}
             >
-              <Text selectable style={styles.primaryButtonText}>{primaryLabel}</Text>
+              <Text selectable style={styles.secondaryButtonText}>{secondaryLabel}</Text>
             </Pressable>
-
-            {secondaryLabel && onSecondaryPress ? (
-              <Pressable
-                accessibilityRole="button"
-                hitSlop={10}
-                onPress={() => {
-                  feedback.play(secondaryFeedback);
-                  onSecondaryPress();
-                }}
-                style={({ pressed }) => [styles.secondaryButton, pressed && styles.controlPressed]}
-              >
-                <Text selectable style={styles.secondaryButtonText}>{secondaryLabel}</Text>
-              </Pressable>
-            ) : null}
-          </View>
+          ) : null}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

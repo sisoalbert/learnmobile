@@ -102,3 +102,13 @@ jest.mock('react-native-reanimated', () => {
 jest.mock('react-native-worklets', () => ({
   scheduleOnRN: (callback: (...args: unknown[]) => unknown, ...args: unknown[]) => callback(...args),
 }));
+
+jest.mock('react-native-keyboard-controller', () => {
+  const { ScrollView, View } = require('react-native');
+  return {
+    KeyboardAwareScrollView: ScrollView,
+    KeyboardProvider: ({ children }: { children: React.ReactNode }) => children,
+    KeyboardToolbar: () => null,
+    useKeyboardHandler: jest.fn(),
+  };
+});
