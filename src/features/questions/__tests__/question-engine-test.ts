@@ -71,4 +71,22 @@ describe('question grading', () => {
     expect(result.status).toBe('error');
     expect(result.validationErrors[0]).toContain('does not match');
   });
+
+  test('correctly matches line selection for find_error when error range specifies columns', () => {
+    const question = {
+      ...QUESTION_FIXTURES_BY_TYPE.find_error,
+      selectionMode: 'line' as const,
+      errors: [{
+        id: 'missing-key',
+        range: { startLine: 9, startColumn: 9, endLine: 9, endColumn: 29 },
+        errorCode: 'react/jsx-key',
+        reason: 'Missing key prop',
+      }],
+    };
+    const answer: QuestionAnswer = {
+      type: 'find_error',
+      answer: { selectedRanges: [{ startLine: 9 }] },
+    };
+    expect(gradeQuestion(question, answer)).toMatchObject({ status: 'correct' });
+  });
 });

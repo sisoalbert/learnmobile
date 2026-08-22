@@ -24,6 +24,13 @@ function normalize(value: string, caseSensitive = false, trimWhitespace = true):
 }
 
 function rangeMatches(left: CodeRange, right: CodeRange): boolean {
+  if (left.startColumn === undefined) {
+    const rightEndLine = right.endLine ?? right.startLine;
+    if (left.endLine !== undefined) {
+      return left.startLine <= rightEndLine && left.endLine >= right.startLine;
+    }
+    return left.startLine >= right.startLine && left.startLine <= rightEndLine;
+  }
   return left.startLine === right.startLine
     && (right.startColumn === undefined || left.startColumn === right.startColumn)
     && (right.endLine === undefined || left.endLine === right.endLine)
