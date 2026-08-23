@@ -4,11 +4,14 @@ import { getFunctionName } from 'convex/server';
 import { feedback, useFeedbackPreferencesStore } from '@/services/feedback';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
+import OnboardingSettingsScreen from '../OnboardingSettingsScreen';
 import SettingsScreen from '../SettingsScreen';
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 const mockSignOutFromConvex = jest.fn();
 let mockIsAuthenticated = false;
+let mockCurrentUser: { onboarding?: { reminderPreference?: 'enabled' | 'disabled' } } | null | undefined;
 const mockUpdatePracticeReminders = jest.fn().mockResolvedValue(undefined);
 const mockGetFunctionName = getFunctionName;
 
@@ -23,9 +26,7 @@ jest.mock('convex/react', () => {
       mockGetFunctionName(reference as never) === 'users:updatePracticeReminders'
         ? mockUpdatePracticeReminders
         : jest.fn().mockResolvedValue(undefined),
-    useQuery: () => mockIsAuthenticated ? {
-      onboarding: { reminderPreference: 'enabled' },
-    } : null,
+    useQuery: () => mockIsAuthenticated ? mockCurrentUser : null,
   };
 });
 
@@ -34,7 +35,7 @@ jest.mock('@sentry/react-native', () => ({
 }));
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ canGoBack: () => false, replace: mockReplace }),
+  useRouter: () => ({ canGoBack: () => false, push: mockPush, replace: mockReplace }),
 }));
 
 jest.mock('@/state/clear-all-zustand-stores', () => ({
@@ -51,6 +52,7 @@ describe('feedback settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsAuthenticated = false;
+    mockCurrentUser = { onboarding: { reminderPreference: 'enabled' } };
     useOnboardingStore.setState({ hasHydrated: true });
     useFeedbackPreferencesStore.setState({
       hasHydrated: true,
@@ -74,6 +76,36 @@ describe('feedback settings', () => {
       hapticFeedbackEnabled: false,
     });
     expect(feedbackPlay).toHaveBeenCalledWith('buttonTap');
+  });
+
+  test('opens saved onboarding selections in their own screen', () => {
+    const screen = render(<SettingsScreen />);
+
+    fireEvent.press(screen.getByLabelText('View onboarding selections'));
+
+    expect(mockPush).toHaveBeenCalledWith('/profile/settings/onboarding');
+  });
+
+  test('uses Convex onboarding data instead of another device’s local selections', () => {
+    mockIsAuthenticated = true;
+    mockCurrentUser = {};
+    useOnboardingStore.setState({
+      learningGoal: 'expo-fundamentals',
+      motivations: ['career'],
+    });
+
+    const screen = render(<OnboardingSettingsScreen />);
+
+    expect(screen.getByText('No saved onboarding selections.')).toBeTruthy();
+    expect(screen.queryByText('Expo fundamentals')).toBeNull();
+  });
+
+  test('uses local onboarding selections for a guest', () => {
+    useOnboardingStore.setState({ learningGoal: 'expo-fundamentals' });
+
+    const screen = render(<OnboardingSettingsScreen />);
+
+    expect(screen.getByText('Expo fundamentals')).toBeTruthy();
   });
 
   test('applies a newly enabled feedback channel before previewing it', () => {

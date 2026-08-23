@@ -9,10 +9,6 @@ function stableHash(value: string) {
   return hash >>> 0;
 }
 
-function arraysEqual(left: string[], right: string[]) {
-  return left.length === right.length && left.every((value, index) => value === right[index]);
-}
-
 export function createInitialArrangeOrder(question: ArrangeInOrderQuestion, attempt = 0) {
   const baseOrder = question.items
     .map((item) => item.id)
@@ -23,9 +19,9 @@ export function createInitialArrangeOrder(question: ArrangeInOrderQuestion, atte
 
   if (baseOrder.length < 2) return baseOrder;
 
-  const incorrectRotations = baseOrder
-    .map((_, offset) => [...baseOrder.slice(offset), ...baseOrder.slice(0, offset)])
-    .filter((candidate) => !arraysEqual(candidate, question.correctOrder));
-
-  return incorrectRotations[attempt % incorrectRotations.length];
+  // Published lesson data deliberately excludes the answer key. Rotate the
+  // deterministic shuffled order on retries without reading correctOrder,
+  // which is only available to the backend grader.
+  const offset = attempt % baseOrder.length;
+  return [...baseOrder.slice(offset), ...baseOrder.slice(0, offset)];
 }

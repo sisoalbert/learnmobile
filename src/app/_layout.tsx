@@ -19,6 +19,11 @@ import {
 import { usePracticeReminderContext } from '@/services/notifications/practice-reminder-context';
 import { useSessionStore } from '@/state/sessionStore';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
+import {
+  StartupRouteProvider,
+  resolveStartupRouteState,
+  type StartupRouteState,
+} from '@/navigation/startup-route-context';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { useUserProfileStore } from '@/state/user-profile-store';
 import { api } from '../../convex/_generated/api';
@@ -76,11 +81,18 @@ function AuthenticatedAppNavigator() {
   const hydrateProfile = useUserProfileStore((state) => state.hydrateProfile);
   const hydrateCommittedGoal = useLearningGoalStore((state) => state.hydrateCommittedGoal);
   const markOnboardingCompleted = useOnboardingStore((state) => state.markCompletedFromAccount);
+  const markOnboardingIncomplete = useOnboardingStore((state) => state.markIncompleteFromAccount);
   const currentUser = useQuery(
     api.users.current,
     !isLoading && convexAuthenticated ? {} : 'skip',
   );
   const mobileAdsFlags = useQuery(api.featureFlags.getMobileAdsFlags);
+  const startupRouteState: StartupRouteState = resolveStartupRouteState({
+    authLoading: isLoading,
+    authenticated: convexAuthenticated,
+    accountLoading: currentUser === undefined,
+    onboardingCompleted: currentUser?.onboarding?.completed === true,
+  });
 
   usePracticeReminderContext(Boolean(convexAuthenticated && currentUser), currentUser?.timezone);
 
@@ -108,23 +120,33 @@ function AuthenticatedAppNavigator() {
         lastName: currentUser.lastName ?? '',
         email: currentUser.email ?? '',
       });
-      if (currentUser.onboarding?.completed) markOnboardingCompleted();
+      if (currentUser.onboarding?.completed) {
+        markOnboardingCompleted();
+      } else {
+        markOnboardingIncomplete();
+      }
       if (currentUser.onboarding?.streakGoal) {
         hydrateCommittedGoal(currentUser.onboarding.streakGoal);
       }
     } else {
       setAuthenticatedUser({ id: 'convex-auth-user' });
     }
-  }, [clearLocalSession, convexAuthenticated, currentUser, hydrateCommittedGoal, hydrateProfile, isLoading, markOnboardingCompleted, setAuthenticatedUser]);
+  }, [clearLocalSession, convexAuthenticated, currentUser, hydrateCommittedGoal, hydrateProfile, isLoading, markOnboardingCompleted, markOnboardingIncomplete, setAuthenticatedUser]);
 
   return (
     <GuestSessionGate authenticated={convexAuthenticated} loading={isLoading}>
-      <AppNavigator mobileAdsFlags={mobileAdsFlags} />
+      <AppNavigator mobileAdsFlags={mobileAdsFlags} startupRouteState={startupRouteState} />
     </GuestSessionGate>
   );
 }
 
-function AppNavigator({ mobileAdsFlags }: { mobileAdsFlags?: MobileAdsFlags }) {
+function AppNavigator({
+  mobileAdsFlags,
+  startupRouteState = { status: 'anonymous' },
+}: {
+  mobileAdsFlags?: MobileAdsFlags;
+  startupRouteState?: StartupRouteState;
+}) {
   usePushNotificationObserver();
 
   useEffect(() => {
@@ -133,33 +155,35 @@ function AppNavigator({ mobileAdsFlags }: { mobileAdsFlags?: MobileAdsFlags }) {
   }, []);
 
   return (
-    <MobileAdsFeatureProvider flags={mobileAdsFlags}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <KeyboardProvider>
-          <AndroidSystemBar />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-            }}
-          >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="welcome" />
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen name="learning-goal" />
-            <Stack.Screen name="create-profile" />
-            <Stack.Screen name="terms" />
-            <Stack.Screen name="privacy" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="todo" />
-            <Stack.Screen name="learning-paths" />
-            <Stack.Screen name="courses/[courseKey]" />
-            <Stack.Screen name="signin" />
-            <Stack.Screen name="signup" />
-            <Stack.Screen name="forgot-password" />
-            <Stack.Screen name="delete-account" />
-          </Stack>
-        </KeyboardProvider>
-      </GestureHandlerRootView>
-    </MobileAdsFeatureProvider>
+    <StartupRouteProvider value={startupRouteState}>
+      <MobileAdsFeatureProvider flags={mobileAdsFlags}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <KeyboardProvider>
+            <AndroidSystemBar />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen name="welcome" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen name="learning-goal" />
+              <Stack.Screen name="create-profile" />
+              <Stack.Screen name="terms" />
+              <Stack.Screen name="privacy" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="todo" />
+              <Stack.Screen name="learning-paths" />
+              <Stack.Screen name="courses/[courseKey]" />
+              <Stack.Screen name="signin" />
+              <Stack.Screen name="signup" />
+              <Stack.Screen name="forgot-password" />
+              <Stack.Screen name="delete-account" />
+            </Stack>
+          </KeyboardProvider>
+        </GestureHandlerRootView>
+      </MobileAdsFeatureProvider>
+    </StartupRouteProvider>
   );
 }

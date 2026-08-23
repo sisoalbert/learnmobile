@@ -1,5 +1,5 @@
 import { Lucide, type LucideIconName } from '@react-native-vector-icons/lucide';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import type { ColorValue } from 'react-native';
 
 import { feedback } from '@/services/feedback';
@@ -13,6 +13,8 @@ function TabIcon({ color, name, size }: { color: ColorValue; name: LucideIconNam
 }
 
 export default function TabLayout() {
+  const router = useRouter();
+
   return (
     <Tabs
       initialRouteName="home"
@@ -65,6 +67,12 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="profile"
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            router.replace('/profile');
+          },
+        }}
         options={{
           title: 'Profile',
           tabBarAccessibilityLabel: 'Profile tab',

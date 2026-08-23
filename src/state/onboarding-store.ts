@@ -84,6 +84,7 @@ export type OnboardingState = {
   previousStep: () => void;
   completeOnboarding: () => void;
   markCompletedFromAccount: () => void;
+  markIncompleteFromAccount: () => void;
   resetOnboarding: () => void;
   setHasHydrated: (value: boolean) => void;
 };
@@ -151,6 +152,8 @@ export const useOnboardingStore = create<OnboardingState>()(
       },
       completeOnboarding: () => set({ isCompleted: true, currentStepId: 'lesson-transition' }),
       markCompletedFromAccount: () => set({ isCompleted: true, currentStepId: 'lesson-transition' }),
+      markIncompleteFromAccount: () => set((state) =>
+        state.isCompleted ? initialProgress : state),
       resetOnboarding: () => set(initialProgress),
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),
     }),

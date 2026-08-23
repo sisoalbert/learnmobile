@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import * as Sentry from '@sentry/react-native';
 import { useConvexAuth, useMutation, useQuery } from 'convex/react';
@@ -9,15 +9,6 @@ import { useRouter } from 'expo-router';
 import { Lucide } from '@react-native-vector-icons/lucide';
 
 import { Header } from '@/common';
-import {
-  DAILY_GOALS,
-  EXPERIENCE_LEVELS,
-  EXPO_EXPERIENCE_LEVELS,
-  LEARNING_GOALS,
-  LEARNING_PLANS,
-  MOTIVATIONS,
-  STARTING_POINTS,
-} from '@/features/onboarding/onboarding-content';
 import { useOnboardingStore } from '@/state/onboarding-store';
 import { feedback, useFeedbackPreferencesStore } from '@/services/feedback';
 import {
@@ -26,17 +17,6 @@ import {
 } from '@/services/notifications/push-notification-manager';
 import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
 import { api } from '../../convex/_generated/api';
-
-type SelectionItem = {
-  id: string;
-  label: string;
-  value: string;
-};
-
-const findLabel = <T extends string | number>(
-  options: { value: T; label: string }[],
-  value: T | null,
-) => options.find((option) => option.value === value)?.label ?? 'Not selected';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -189,102 +169,38 @@ export default function SettingsScreen() {
     }
   };
 
-  const selections = useMemo<SelectionItem[]>(() => {
-    const motivationLabels = onboarding.motivations.map(
-      (motivation) =>
-        MOTIVATIONS.find((option) => option.value === motivation)?.label ?? motivation,
-    );
-
-    return [
-      {
-        id: 'learning-goal',
-        label: 'Learning goal',
-        value: findLabel(LEARNING_GOALS, onboarding.learningGoal),
-      },
-      {
-        id: 'react-native-experience',
-        label: 'React Native experience',
-        value: findLabel(EXPERIENCE_LEVELS, onboarding.experienceLevel),
-      },
-      {
-        id: 'expo-experience',
-        label: 'Expo experience',
-        value: findLabel(EXPO_EXPERIENCE_LEVELS, onboarding.expoExperience),
-      },
-      {
-        id: 'motivations',
-        label: 'Motivations',
-        value: motivationLabels.length > 0 ? motivationLabels.join(', ') : 'Not selected',
-      },
-      {
-        id: 'daily-goal',
-        label: 'Daily goal',
-        value: findLabel(DAILY_GOALS, onboarding.dailyGoalMinutes),
-      },
-      {
-        id: 'practice-reminders',
-        label: 'Practice reminders',
-        value:
-          currentUser?.onboarding?.reminderPreference === 'enabled'
-            ? 'Enabled'
-            : currentUser?.onboarding?.reminderPreference === 'disabled'
-              ? 'Disabled'
-              : 'Not selected',
-      },
-      {
-        id: 'learning-plan',
-        label: 'Learning plan',
-        value: findLabel(LEARNING_PLANS, onboarding.learningPlan),
-      },
-      {
-        id: 'starting-point',
-        label: 'Starting point',
-        value: findLabel(STARTING_POINTS, onboarding.startingPoint),
-      },
-    ];
-  }, [
-    onboarding.dailyGoalMinutes,
-    onboarding.experienceLevel,
-    onboarding.expoExperience,
-    onboarding.learningGoal,
-    onboarding.learningPlan,
-    onboarding.motivations,
-    currentUser?.onboarding?.reminderPreference,
-    onboarding.startingPoint,
-  ]);
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Header />
+      <Header onBack={() => router.replace('/profile')} />
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
-        data={onboarding.hasHydrated ? selections : []}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.selectionCard}>
-            <Text selectable style={styles.selectionLabel}>
-              {item.label}
-            </Text>
-            <Text selectable style={styles.selectionValue}>
-              {item.value}
-            </Text>
-          </View>
-        )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        data={[]}
+        renderItem={null}
         ListHeaderComponent={
           <View style={styles.heading}>
             <Text selectable style={styles.title}>
               Settings
             </Text>
             <Text selectable style={styles.description}>
-              Your saved onboarding selections
+              Manage your app preferences.
             </Text>
           </View>
         }
         ListEmptyComponent={
-          <Text selectable style={styles.loadingText}>
-            Loading saved selections…
-          </Text>
+          <Pressable
+            accessibilityLabel="View onboarding selections"
+            accessibilityRole="button"
+            onPress={() => router.push('/profile/settings/onboarding')}
+            style={({ pressed }) => [styles.onboardingLink, pressed && styles.onboardingLinkPressed]}
+          >
+            <View style={styles.onboardingLinkCopy}>
+              <Text selectable style={styles.onboardingLinkTitle}>Onboarding selections</Text>
+              <Text selectable style={styles.onboardingLinkDescription}>
+                Review the goals and preferences you chose when getting started.
+              </Text>
+            </View>
+            <Lucide name="chevron-right" size={22} color="#737373" />
+          </Pressable>
         }
         ListFooterComponent={
           <View style={styles.footer}>
@@ -437,8 +353,11 @@ const styles = StyleSheet.create({
     color: '#737373',
     fontSize: 15,
   },
-  selectionCard: {
-    gap: 7,
+  onboardingLink: {
+    minHeight: 88,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
     padding: 16,
     borderWidth: 1.5,
     borderColor: '#E2E2E2',
@@ -446,26 +365,22 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     backgroundColor: '#FFFFFF',
   },
-  selectionLabel: {
-    color: '#737373',
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  onboardingLinkPressed: {
+    opacity: 0.72,
   },
-  selectionValue: {
+  onboardingLinkCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  onboardingLinkTitle: {
     color: '#2D2D2D',
     fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
+    fontWeight: '800',
   },
-  separator: {
-    height: 10,
-  },
-  loadingText: {
+  onboardingLinkDescription: {
     color: '#737373',
-    fontSize: 15,
-    textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 18,
   },
   footer: {
     gap: 28,
