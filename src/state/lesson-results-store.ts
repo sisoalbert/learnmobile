@@ -116,7 +116,6 @@ export const useLessonResultsStore = create<LessonResultsState>()(
       },
       startBackendLesson: (lessonId, startedAt = Date.now()) => {
         const state = get();
-        if (state.lessonId === lessonId && state.startedAt !== null && state.completedAt === null) return;
         set({
           ...initialAttempt,
           lessonId,

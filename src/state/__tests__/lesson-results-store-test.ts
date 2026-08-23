@@ -88,6 +88,21 @@ describe('lesson results store', () => {
     expect(useLessonResultsStore.getState().latestSummary?.completedAt).toBe(11_000);
   });
 
+  test('always starts a fresh local session for a new backend attempt', () => {
+    const store = useLessonResultsStore.getState();
+    store.startBackendLesson('beginner-course-4-lesson-3', 1_000);
+    store.advanceQuestion(1);
+    store.startBackendLesson('beginner-course-4-lesson-3', 9_000);
+
+    expect(useLessonResultsStore.getState()).toMatchObject({
+      lessonId: 'beginner-course-4-lesson-3',
+      startedAt: 9_000,
+      completedAt: null,
+      currentQuestionIndex: 0,
+      questionResults: {},
+    });
+  });
+
   test('formats completion time as minutes and zero-padded seconds', () => {
     expect(formatLessonDuration(169)).toBe('2:49');
     expect(formatLessonDuration(5)).toBe('0:05');

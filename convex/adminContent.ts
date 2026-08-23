@@ -142,3 +142,81 @@ export const createLesson = mutation({
     return { lessonId, key };
   },
 });
+
+/**
+ * One-time content migration for the beginner counter exercise. It remains
+ * restricted to authenticated administrators, so the answer key is never
+ * accessible to learner clients.
+ */
+export const replaceBeginnerCounterChallenge = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const exercise = await ctx.db
+      .query('exercises')
+      .withIndex('by_key', (q) => q.eq('key', 'beginner-c4-l3-mini-001'))
+      .unique();
+    if (!exercise) throw new ConvexError({ code: 'EXERCISE_NOT_FOUND' });
+
+    const lesson = await ctx.db.get(exercise.lessonId);
+    if (lesson?.key !== 'beginner-course-4-lesson-3') {
+      throw new ConvexError({ code: 'UNEXPECTED_LESSON' });
+    }
+
+    const solution = await ctx.db
+      .query('exerciseSolutions')
+      .withIndex('by_exercise', (q) => q.eq('exerciseId', exercise._id))
+      .unique();
+    if (!solution) throw new ConvexError({ code: 'SOLUTION_NOT_FOUND' });
+
+    const question = {
+      id: 'beginner-c4-l3-mini-001',
+      type: 'multiple_choice' as const,
+      title: 'Make the button increase the count',
+      prompt: 'Complete the onPress handler for a reusable counter.',
+      instruction: 'Choose the handler that updates React state when the button is pressed.',
+      difficulty: 'beginner' as const,
+      topic: 'Components, state, and events',
+      tags: ['react', 'state', 'pressable'],
+      xp: exercise.xp,
+      estimatedSeconds: 45,
+      hints: [{
+        id: 'hint-1',
+        text: 'Pressable needs a function. That function should call setCount with the next value.',
+      }],
+      explanation: {
+        summary: 'Use an arrow function so setCount runs only after the press.',
+        details: 'The handler receives no arguments here; it closes over count and calls setCount(count + 1) when the learner presses the button.',
+        documentationUrl: 'https://react.dev/learn/adding-interactivity',
+      },
+      status: 'published' as const,
+      version: 2,
+      language: 'tsx' as const,
+      codeSnippet: `<Pressable onPress={__________}>\n  <Text>Increase count</Text>\n</Pressable>`,
+      options: [
+        { id: 'increment', text: '() => setCount(count + 1)' },
+        { id: 'run-now', text: 'setCount(count + 1)' },
+        { id: 'no-update', text: '() => count + 1' },
+      ],
+    };
+    const publicQuestion = question;
+    const timestamp = Date.now();
+
+    await ctx.db.patch(exercise._id, {
+      type: 'multiple_choice',
+      title: question.title,
+      prompt: question.prompt,
+      instruction: question.instruction,
+      publicDataJson: JSON.stringify(publicQuestion),
+      explanationJson: JSON.stringify(question.explanation),
+      version: question.version,
+      updatedAt: timestamp,
+    });
+    await ctx.db.patch(solution._id, {
+      solutionDataJson: JSON.stringify({ ...question, correctOptionId: 'increment' }),
+      updatedAt: timestamp,
+    });
+
+    return { exerciseKey: exercise.key, version: question.version };
+  },
+});

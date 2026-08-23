@@ -58,6 +58,8 @@ export interface MultipleChoiceQuestion extends BaseQuestion {
   options: ChoiceOption[];
   correctOptionId: string;
   shuffleOptions?: boolean;
+  codeSnippet?: string;
+  language?: 'javascript' | 'typescript' | 'jsx' | 'tsx';
 }
 
 export interface MultipleChoiceAnswer { selectedOptionId: string }

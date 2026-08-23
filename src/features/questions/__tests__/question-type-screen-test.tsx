@@ -8,6 +8,7 @@ import { QUESTION_INPUT_ACCESSORY_ID } from '../question-constants';
 import { QUESTION_FIXTURES_BY_TYPE } from '../testing/question-fixtures';
 import { QuestionTypeScreen } from '../question-type-screen';
 import { parseTemplateLines } from '../question-ui';
+import type { MultipleChoiceQuestion } from '../questions.types';
 
 let mockInLessonAdsEnabled: boolean | undefined = true;
 
@@ -75,6 +76,21 @@ describe('QuestionTypeScreen', () => {
     expect(screen.getByText('Check answer')).toBeDisabled();
     fireEvent.changeText(screen.getByLabelText('Answer for message'), 'Hello Expo!');
     expect(screen.getByText('Check answer')).toBeEnabled();
+  });
+
+  test('shows a code snippet above a code-choice answer', () => {
+    render(
+      <QuestionTypeScreen
+        question={{
+          ...(QUESTION_FIXTURES_BY_TYPE.multiple_choice as MultipleChoiceQuestion),
+          codeSnippet: '<Pressable onPress={__________}>\\n  <Text>Increase count</Text>\\n</Pressable>',
+          language: 'tsx',
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/<Pressable onPress=\{__________\}>/)).toBeTruthy();
+    expect(screen.getByText(/Increase count/)).toBeTruthy();
   });
 
   test('keeps keyboard controls available for the code editor', () => {

@@ -72,7 +72,12 @@ function useStableItems<T extends { id: string }>(items: T[], shuffle?: boolean)
 
 export function MultipleChoiceQuestionScreen({ question, answer, disabled, onAnswerChange }: QuestionInteractionProps<MultipleChoiceQuestion, MultipleChoiceAnswer>) {
   const options = useStableItems(question.options, question.shuffleOptions);
-  return <View style={styles.list}>{options.map((option) => <SelectionCard key={option.id} label={option.text} detail={option.code} selected={answer?.selectedOptionId === option.id} disabled={disabled} onPress={() => onAnswerChange({ selectedOptionId: option.id })} />)}</View>;
+  return (
+    <View style={styles.sectionGap}>
+      {question.codeSnippet ? <CodeCard code={question.codeSnippet} /> : null}
+      <View style={styles.list}>{options.map((option) => <SelectionCard key={option.id} label={option.text} detail={option.code} selected={answer?.selectedOptionId === option.id} disabled={disabled} onPress={() => onAnswerChange({ selectedOptionId: option.id })} />)}</View>
+    </View>
+  );
 }
 
 export function MultiSelectQuestionScreen({ question, answer, disabled, onAnswerChange }: QuestionInteractionProps<MultiSelectQuestion, MultiSelectAnswer>) {
