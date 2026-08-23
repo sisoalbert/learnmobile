@@ -1,4 +1,4 @@
-import { QUESTION_FIXTURES, QUESTION_FIXTURES_BY_TYPE } from '../question-fixtures';
+import { QUESTION_FIXTURES, QUESTION_FIXTURES_BY_TYPE } from '../testing/question-fixtures';
 import { gradeQuestion, isAnswerComplete } from '../question-engine';
 import type { QuestionAnswer, QuestionType } from '../questions.types';
 

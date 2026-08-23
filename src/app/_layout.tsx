@@ -1,5 +1,5 @@
 import { ConvexAuthProvider, useConvexAuth } from '@convex-dev/auth/react';
-import { ConvexReactClient, useMutation, useQuery } from 'convex/react';
+import { ConvexReactClient, useQuery } from 'convex/react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -84,8 +84,6 @@ function AuthenticatedAppNavigator() {
 
   usePracticeReminderContext(Boolean(convexAuthenticated && currentUser), currentUser?.timezone);
 
-  useContentBootstrap();
-
   useEffect(() => {
     if (isLoading) return;
     if (!convexAuthenticated) {
@@ -126,15 +124,6 @@ function AuthenticatedAppNavigator() {
   );
 }
 
-function useContentBootstrap() {
-  const courses = useQuery(api.content.listPublishedCourses);
-  const ensureSeeded = useMutation(api.content.ensureSeeded);
-
-  useEffect(() => {
-    if (courses?.length === 0) void ensureSeeded({});
-  }, [courses, ensureSeeded]);
-}
-
 function AppNavigator({ mobileAdsFlags }: { mobileAdsFlags?: MobileAdsFlags }) {
   usePushNotificationObserver();
 
@@ -164,8 +153,6 @@ function AppNavigator({ mobileAdsFlags }: { mobileAdsFlags?: MobileAdsFlags }) {
             <Stack.Screen name="todo" />
             <Stack.Screen name="learning-paths" />
             <Stack.Screen name="courses/[courseKey]" />
-            <Stack.Screen name="question-types" />
-
             <Stack.Screen name="signin" />
             <Stack.Screen name="signup" />
             <Stack.Screen name="forgot-password" />

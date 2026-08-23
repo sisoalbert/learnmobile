@@ -12,7 +12,6 @@ import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as authz from "../authz.js";
 import type * as content from "../content.js";
-import type * as contentSeed from "../contentSeed.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as featureFlags from "../featureFlags.js";
@@ -44,7 +43,6 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authz: typeof authz;
   content: typeof content;
-  contentSeed: typeof contentSeed;
   crons: typeof crons;
   emails: typeof emails;
   featureFlags: typeof featureFlags;

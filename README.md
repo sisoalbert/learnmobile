@@ -15,6 +15,8 @@ eas update --channel production --message "p2p message delete and copy"
 ## Convex Backend Deployment
 
 See [Convex Auth Setup and Production Runbook](docs/authentication.md) before deploying authentication changes.
+Course content is managed directly in Convex. This app does not bundle or automatically seed courses,
+lessons, exercises, or answer keys; ensure each deployment contains validated published content before release.
 
 # 1. Test development backend
 ```bash
@@ -221,4 +223,3 @@ Changing native dependencies or native configuration requires a new store build.
 Learn Expo supports custom URL schemes (`learn://`) and verified domain links (`https://learnexpo.online/...`) on both iOS and Android.
 
 See the complete [Deep Linking Runbook](docs/deep-linking.md) for configuration details, SHA-256 certificate fingerprints, Cloudflare `.well-known` deployment, and platform verification commands.
-

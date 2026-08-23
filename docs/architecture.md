@@ -640,13 +640,9 @@ A content version must be incremented when published learning content changes in
 
 ### 9.3 Content Creation
 
-For the MVP, course content is created through:
-
-- Seed scripts
-- Internal admin mutations
-- Validated JSON or TypeScript source files
-
-A full content management system is deferred.
+Course content is managed in Convex. The Expo client does not bundle or seed curriculum data;
+each Convex environment must contain its published courses, lessons, exercises, and private
+solutions before learners use it.
 
 ### 9.4 Ordering
 
@@ -1358,7 +1354,8 @@ Each environment must have separate:
 - Analytics configuration
 - Push credentials
 
-Published course content should be seeded and validated per environment.
+Published course content must be created and validated in each Convex environment before that
+environment is released.
 
 ---
 

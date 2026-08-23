@@ -1,4 +1,4 @@
-import type { BaseQuestion, Question, QuestionType, RenderNode } from './questions.types';
+import type { BaseQuestion, Question, QuestionType, RenderNode } from '../questions.types';
 
 const base = (id: string, type: QuestionType, title: string, prompt: string): BaseQuestion => ({
   id,

@@ -1,5 +1,5 @@
 import { createInitialArrangeOrder } from '../arrange-order';
-import { QUESTION_FIXTURES_BY_TYPE } from '../question-fixtures';
+import { QUESTION_FIXTURES_BY_TYPE } from '../testing/question-fixtures';
 import type { ArrangeInOrderQuestion } from '../questions.types';
 
 describe('Arrange in Order initialization', () => {

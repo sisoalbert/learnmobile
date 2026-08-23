@@ -5,7 +5,7 @@ import { Keyboard, Platform } from 'react-native';
 import { feedback } from '@/services/feedback';
 import { useSessionStore } from '@/state/sessionStore';
 import { QUESTION_INPUT_ACCESSORY_ID } from '../question-constants';
-import { QUESTION_FIXTURES_BY_TYPE } from '../question-fixtures';
+import { QUESTION_FIXTURES_BY_TYPE } from '../testing/question-fixtures';
 import { QuestionTypeScreen } from '../question-type-screen';
 import { parseTemplateLines } from '../question-ui';
 
