@@ -173,6 +173,7 @@ function AppNavigator({
               <Stack.Screen name="terms" />
               <Stack.Screen name="privacy" />
               <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="(protected)" />
               <Stack.Screen name="todo" />
               <Stack.Screen name="learning-paths" />
               <Stack.Screen name="courses/[courseKey]" />

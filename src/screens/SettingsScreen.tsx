@@ -177,30 +177,30 @@ export default function SettingsScreen() {
         data={[]}
         renderItem={null}
         ListHeaderComponent={
-          <View style={styles.heading}>
-            <Text selectable style={styles.title}>
-              Settings
-            </Text>
-            <Text selectable style={styles.description}>
-              Manage your app preferences.
-            </Text>
-          </View>
-        }
-        ListEmptyComponent={
-          <Pressable
-            accessibilityLabel="View onboarding selections"
-            accessibilityRole="button"
-            onPress={() => router.push('/profile/settings/onboarding')}
-            style={({ pressed }) => [styles.onboardingLink, pressed && styles.onboardingLinkPressed]}
-          >
-            <View style={styles.onboardingLinkCopy}>
-              <Text selectable style={styles.onboardingLinkTitle}>Onboarding selections</Text>
-              <Text selectable style={styles.onboardingLinkDescription}>
-                Review the goals and preferences you chose when getting started.
+          <>
+            <View style={styles.heading}>
+              <Text selectable style={styles.title}>
+                Settings
+              </Text>
+              <Text selectable style={styles.description}>
+                Manage your app preferences.
               </Text>
             </View>
-            <Lucide name="chevron-right" size={22} color="#737373" />
-          </Pressable>
+            <Pressable
+              accessibilityLabel="View onboarding selections"
+              accessibilityRole="button"
+              onPress={() => router.push('/settings/onboarding')}
+              style={({ pressed }) => [styles.onboardingLink, pressed && styles.onboardingLinkPressed]}
+            >
+              <View style={styles.onboardingLinkCopy}>
+                <Text selectable style={styles.onboardingLinkTitle}>Onboarding selections</Text>
+                <Text selectable style={styles.onboardingLinkDescription}>
+                  Review the goals and preferences you chose when getting started.
+                </Text>
+              </View>
+              <Lucide name="chevron-right" size={22} color="#737373" />
+            </Pressable>
+          </>
         }
         ListFooterComponent={
           <View style={styles.footer}>
@@ -354,8 +354,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   onboardingLink: {
+    width: '100%',
     minHeight: 88,
     flexDirection: 'row',
+    flexWrap: 'nowrap',
     alignItems: 'center',
     gap: 16,
     padding: 16,

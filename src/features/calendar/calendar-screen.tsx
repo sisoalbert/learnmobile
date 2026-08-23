@@ -30,6 +30,7 @@ export default function CalendarScreen() {
   }
 
   const monthKey = new Date().toISOString().slice(0, 7);
+  const todayKey = new Date().toISOString().slice(0, 10);
   const serverActivityDateKeys = (learning.monthlyActivityDateKeys ?? []) as string[];
   const recentPracticeDateKeys = (learning.progress as LearningProgress[])
     .map((item) => item.lastPracticeDate)
@@ -64,7 +65,7 @@ export default function CalendarScreen() {
         <View accessibilityLabel={`${monthTitle} practice calendar, ${weeks.length} weeks`} style={styles.weekList}>
           {weeks.map((days, index) => (
             <View accessibilityLabel={`Week ${index + 1} of ${weeks.length}`} key={days[0].dateKey} style={[styles.weekCard, compact && styles.weekCardCompact]}>
-              {days.map((day) => <CalendarDay compact={compact} day={day} key={day.dateKey} monthTitle={monthTitle} />)}
+              {days.map((day) => <CalendarDay compact={compact} day={day} isToday={day.dateKey === todayKey} key={day.dateKey} monthTitle={monthTitle} />)}
             </View>
           ))}
         </View>
@@ -73,7 +74,7 @@ export default function CalendarScreen() {
   );
 }
 
-function CalendarDay({ compact, day, monthTitle }: { compact: boolean; day: MonthCalendarDay; monthTitle: string }) {
+function CalendarDay({ compact, day, isToday, monthTitle }: { compact: boolean; day: MonthCalendarDay; isToday: boolean; monthTitle: string }) {
   const dateLabel = new Date(`${day.dateKey}T00:00:00Z`).toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'long',
@@ -82,8 +83,8 @@ function CalendarDay({ compact, day, monthTitle }: { compact: boolean; day: Mont
   const state = day.completed ? 'completed' : day.inMonth ? 'not completed' : `outside ${monthTitle}`;
 
   return (
-    <View accessibilityLabel={`${day.label}, ${dateLabel}, ${state}`} style={[styles.day, !day.inMonth && styles.dayOutside]}>
-      <View style={[styles.dayCircle, compact && styles.dayCircleCompact, day.completed && styles.dayCircleCompleted]}>
+    <View accessibilityLabel={`${day.label}, ${dateLabel}, ${state}${isToday ? ', today' : ''}`} style={[styles.day, !day.inMonth && styles.dayOutside]}>
+      <View style={[styles.dayCircle, compact && styles.dayCircleCompact, day.completed && styles.dayCircleCompleted, isToday && styles.dayCircleToday]}>
         {day.completed ? (
           <Lucide color="#FFFFFF" name="check" size={compact ? 19 : 22} />
         ) : (
@@ -122,6 +123,7 @@ const styles = StyleSheet.create({
   dayCircle: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 26, backgroundColor: '#E7E9EE' },
   dayCircleCompact: { width: 42, height: 42, borderRadius: 21 },
   dayCircleCompleted: { backgroundColor: '#F29A32' },
+  dayCircleToday: { borderWidth: 2, borderColor: '#2289FD' },
   dayInitial: { color: '#7D8698', fontSize: 18, fontWeight: '900' },
   dayInitialCompact: { fontSize: 15 },
   dayLabel: { maxWidth: '100%', color: '#7D8698', fontSize: 12, fontWeight: '800', textAlign: 'center' },

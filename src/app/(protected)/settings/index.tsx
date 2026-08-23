@@ -1,5 +1,5 @@
 import SettingsScreen from '@/screens/SettingsScreen';
 
-export default function ProfileSettingsRoute() {
+export default function SettingsRoute() {
   return <SettingsScreen />;
 }

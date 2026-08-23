@@ -67,7 +67,7 @@ export default function OnboardingSettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Header onBack={() => router.replace('/profile/settings')} />
+      <Header onBack={() => router.replace('/settings')} />
       <FlatList
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"

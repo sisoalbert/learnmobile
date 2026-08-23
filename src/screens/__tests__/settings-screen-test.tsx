@@ -83,7 +83,7 @@ describe('feedback settings', () => {
 
     fireEvent.press(screen.getByLabelText('View onboarding selections'));
 
-    expect(mockPush).toHaveBeenCalledWith('/profile/settings/onboarding');
+    expect(mockPush).toHaveBeenCalledWith('/settings/onboarding');
   });
 
   test('uses Convex onboarding data instead of another device’s local selections', () => {

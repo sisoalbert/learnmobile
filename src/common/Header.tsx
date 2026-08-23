@@ -47,7 +47,7 @@ export default function Header({
       )}
 
       {showSettings && (
-        <Link href="/profile/settings" asChild>
+        <Link href="/settings" asChild>
           <Pressable
             accessibilityLabel="Open profile settings"
             accessibilityRole="button"

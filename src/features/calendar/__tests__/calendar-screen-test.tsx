@@ -43,6 +43,7 @@ describe('Calendar screen', () => {
     expect(screen.getByLabelText('August practice calendar, 6 weeks')).toBeTruthy();
     expect(screen.getAllByLabelText(/Week \d of 6/)).toHaveLength(6);
     expect(screen.getByLabelText('Wednesday, August 5, completed')).toBeTruthy();
+    expect(screen.getByLabelText('Thursday, August 6, completed, today')).toBeTruthy();
     expect(screen.getByLabelText('Monday, July 27, outside August')).toBeTruthy();
     expect(screen.getByTestId('calendar-safe-area')).toHaveProp('edges', expect.objectContaining({ top: 'additive' }));
   });
