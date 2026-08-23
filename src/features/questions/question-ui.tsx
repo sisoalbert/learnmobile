@@ -1,8 +1,8 @@
 /* eslint-disable react-hooks/immutability -- Reanimated SharedValues are intentionally mutated in UI-thread gesture callbacks. */
 import { Lucide, type LucideIconName } from '@react-native-vector-icons/lucide';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Keyboard, Platform, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
-import { Gesture, GestureDetector, Pressable, ScrollView } from 'react-native-gesture-handler';
+import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
