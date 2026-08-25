@@ -2,6 +2,7 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
+import { makeFunctionReference } from 'convex/server';
 import type { Id } from './_generated/dataModel';
 import {
   internalAction,
@@ -15,6 +16,27 @@ const EXPO_PUSH_SEND_URL = 'https://exp.host/--/api/v2/push/send';
 const EXPO_PUSH_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
 const RECEIPT_DELAY_MS = 15 * 60 * 1000;
 const MAX_FETCH_ATTEMPTS = 3;
+
+const getStreakReminderPushContextRef = makeFunctionReference<
+  'query',
+  { userId: Id<'users'>; localDate: string },
+  { localDate: string; streakDays: number; devices: { deviceId: Id<'devices'>; expoPushToken: string }[] } | null
+>('streakReminders:getStreakReminderPushContext');
+const finalizeStreakPushReminderRef = makeFunctionReference<
+  'mutation',
+  { userId: Id<'users'>; localDate: string; sentAt: number },
+  null
+>('streakReminders:finalizeStreakPushReminder');
+const retryStreakPushReminderRef = makeFunctionReference<
+  'mutation',
+  { userId: Id<'users'>; localDate: string },
+  null
+>('streakReminders:retryStreakPushReminder');
+const reconcileStreakReminderRef = makeFunctionReference<
+  'mutation',
+  { userId: Id<'users'> },
+  null
+>('streakReminders:reconcileStreakReminder');
 
 type ExpoPushTicket = {
   status: 'ok' | 'error';
@@ -89,6 +111,7 @@ export const registerDevice = mutation({
     installationId: v.string(),
     expoPushToken: v.string(),
     platform: v.union(v.literal('ios'), v.literal('android')),
+    allowReenable: v.boolean(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -118,6 +141,9 @@ export const registerDevice = mutation({
     }
 
     if (existingInstallation) {
+      if (existingInstallation.removedAt !== undefined && !args.allowReenable) {
+        return existingInstallation._id;
+      }
       await ctx.db.patch(existingInstallation._id, {
         userId,
         platform: args.platform,
@@ -126,6 +152,7 @@ export const registerDevice = mutation({
         updatedAt: timestamp,
         lastSeenAt: timestamp,
         disabledAt: undefined,
+        removedAt: undefined,
       });
       return existingInstallation._id;
     }
@@ -181,6 +208,52 @@ export const currentDevices = query({
       platform: device.platform,
       expoPushToken: device.expoPushToken,
     }] : []);
+  },
+});
+
+export const listDevices = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const devices = await ctx.db
+      .query('devices')
+      .withIndex('by_user_push_enabled', (q) => q.eq('userId', userId).eq('pushEnabled', true))
+      .collect();
+
+    // Never expose push tokens to the client; the device id is only used for the
+    // authenticated removal mutation below.
+    return devices
+      .filter((device) => device.expoPushToken)
+      .map((device) => ({
+        id: device._id,
+        platform: device.platform,
+        createdAt: device.createdAt,
+        lastSeenAt: device.lastSeenAt ?? device.updatedAt,
+      }))
+      .sort((first, second) => second.lastSeenAt - first.lastSeenAt);
+  },
+});
+
+export const removeDevice = mutation({
+  args: { deviceId: v.id('devices') },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('UNAUTHENTICATED');
+
+    const device = await ctx.db.get(args.deviceId);
+    if (!device || device.userId !== userId) throw new Error('DEVICE_NOT_FOUND');
+
+    const timestamp = Date.now();
+    await ctx.db.patch(device._id, {
+      expoPushToken: undefined,
+      pushEnabled: false,
+      updatedAt: timestamp,
+      disabledAt: timestamp,
+      removedAt: timestamp,
+    });
+    return null;
   },
 });
 
@@ -295,6 +368,63 @@ export const recordSendFailure = internalMutation({
   },
 });
 
+export const recordStreakReminderPushTickets = internalMutation({
+  args: {
+    userId: v.id('users'),
+    localDate: v.string(),
+    results: v.array(ticketResultValidator),
+  },
+  handler: async (ctx, args) => {
+    const timestamp = Date.now();
+    const ticketed: { deliveryId: Id<'pushNotificationDeliveries'>; ticketId: string }[] = [];
+    for (const result of args.results) {
+      const deliveryId = await ctx.db.insert('pushNotificationDeliveries', {
+        userId: args.userId,
+        deviceId: result.deviceId,
+        type: 'streak_reminder',
+        reminderDate: args.localDate,
+        ...(result.ticketId ? { ticketId: result.ticketId } : {}),
+        status: result.ticketId ? 'ticketed' : 'failed',
+        ...(result.error ? { error: result.error } : {}),
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      if (result.ticketId) ticketed.push({ deliveryId, ticketId: result.ticketId });
+      if (result.error?.startsWith('DeviceNotRegistered:')) {
+        await ctx.db.patch(result.deviceId, { pushEnabled: false, updatedAt: timestamp, disabledAt: timestamp });
+      }
+    }
+    if (ticketed.length > 0) {
+      await ctx.scheduler.runAfter(RECEIPT_DELAY_MS, internal.notifications.checkPushReceipts, { deliveries: ticketed });
+    }
+    return ticketed;
+  },
+});
+
+export const recordStreakReminderPushFailure = internalMutation({
+  args: {
+    userId: v.id('users'),
+    localDate: v.string(),
+    devices: v.array(v.object({ deviceId: v.id('devices') })),
+    error: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const timestamp = Date.now();
+    for (const device of args.devices) {
+      await ctx.db.insert('pushNotificationDeliveries', {
+        userId: args.userId,
+        deviceId: device.deviceId,
+        type: 'streak_reminder',
+        reminderDate: args.localDate,
+        status: 'failed',
+        error: args.error,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+  },
+});
+
 export const recordPushReceipts = internalMutation({
   args: {
     results: v.array(v.object({
@@ -376,6 +506,57 @@ export const sendLessonCompleted = internalAction({
       ...args,
       results,
     });
+    return null;
+  },
+});
+
+export const sendStreakReminderPush = internalAction({
+  args: { userId: v.id('users'), localDate: v.string() },
+  handler: async (ctx, args): Promise<null> => {
+    const context = await ctx.runQuery(getStreakReminderPushContextRef, args);
+    if (!context) {
+      await ctx.runMutation(reconcileStreakReminderRef, { userId: args.userId });
+      return null;
+    }
+    if (context.devices.length === 0) {
+      await ctx.runMutation(finalizeStreakPushReminderRef, { ...args, sentAt: Date.now() });
+      return null;
+    }
+
+    let responseData: unknown;
+    try {
+      const response = await postToExpo(
+        EXPO_PUSH_SEND_URL,
+        context.devices.map((device) => ({
+          to: device.expoPushToken,
+          sound: 'default',
+          channelId: 'learning',
+          title: 'Your streak is at risk 🔥',
+          body: `Keep your ${context.streakDays}-day streak going — complete a lesson today.`,
+          data: { type: 'streakReminder', url: '/home' },
+        })),
+        requireAccessToken(),
+      );
+      responseData = (response as { data?: unknown })?.data;
+    } catch (error) {
+      await ctx.runMutation(internal.notifications.recordStreakReminderPushFailure, {
+        ...args,
+        devices: context.devices.map(({ deviceId }) => ({ deviceId })),
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await ctx.runMutation(retryStreakPushReminderRef, args);
+      throw error;
+    }
+
+    const tickets = Array.isArray(responseData) ? responseData : [responseData];
+    const results = context.devices.map((device, index) => {
+      const ticket = tickets[index] as ExpoPushTicket | undefined;
+      return ticket?.status === 'ok' && ticket.id
+        ? { deviceId: device.deviceId, ticketId: ticket.id }
+        : { deviceId: device.deviceId, error: ticket ? ticketError(ticket) : 'Expo Push API did not return a ticket' };
+    });
+    await ctx.runMutation(internal.notifications.recordStreakReminderPushTickets, { ...args, results });
+    await ctx.runMutation(finalizeStreakPushReminderRef, { ...args, sentAt: Date.now() });
     return null;
   },
 });

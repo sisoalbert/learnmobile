@@ -21,6 +21,7 @@ import {
   currentStreakLength,
   longestStreakLength,
   nextStreakReminderAt,
+  nextStreakPushReminderAt,
 } from './streakReminderTime';
 
 const HEARTS_DEFAULT = 5;
@@ -561,10 +562,16 @@ async function completeAttempt(ctx: MutationCtx, owner: Owner, attemptId: Id<'le
       && user.email?.trim()
       ? localTimeAt(addDateKeyDays(localDateKey(timestamp, user.timezone), 1), 19, user.timezone)
       : undefined;
+    const nextStreakPushAt = user?.timezone
+      && isValidTimezone(user.timezone)
+      && user.onboarding?.reminderPreference === 'enabled'
+      ? nextStreakPushReminderAt(timestamp, user.timezone, timestamp)
+      : undefined;
     await ctx.db.patch(owner.userId, {
       lastActiveAt: timestamp,
       lastPracticeAt: timestamp,
       nextStreakEmailAt,
+      nextStreakPushAt,
     });
   }
   else await ctx.db.patch(owner.learnerSessionId, { lastSeenAt: timestamp });
@@ -938,18 +945,22 @@ export const mergeGuestProgress = mutation({
       ? account?.lastPracticeAt
       : Math.max(account?.lastPracticeAt ?? 0, guestLastPracticeAt);
     let nextStreakEmailAt: number | undefined;
+    let nextStreakPushAt: number | undefined;
     if (
       account?.onboarding?.reminderPreference === 'enabled'
-      && account.email?.trim()
       && lastPracticeAt !== undefined
       && currentDays > 0
     ) {
-      nextStreakEmailAt = nextStreakReminderAt(lastPracticeAt, timezone);
+      nextStreakEmailAt = account.email?.trim()
+        ? nextStreakReminderAt(lastPracticeAt, timezone)
+        : undefined;
+      nextStreakPushAt = nextStreakPushReminderAt(lastPracticeAt, timezone);
     }
     await ctx.db.patch(user.userId, {
       lastActiveAt: Date.now(),
       lastPracticeAt,
       nextStreakEmailAt,
+      nextStreakPushAt,
     });
     return { merged: true, alreadyMerged: false };
   },

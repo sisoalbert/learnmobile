@@ -5,6 +5,7 @@ import {
   localTimeAt,
   longestStreakLength,
   nextStreakReminderAt,
+  nextStreakPushReminderAt,
 } from '../../../../convex/streakReminderTime';
 import { streakReminderEligibility } from '../../../../convex/streakReminderRules';
 import {
@@ -23,6 +24,21 @@ describe('streak reminder timezone rules', () => {
       'Africa/Johannesburg',
       tuesdayBeforeReminder,
     )).toBe(Date.parse('2026-08-18T17:00:00Z'));
+  });
+
+  test('schedules the push reminder for 20:00 in local time', () => {
+    const practicedMonday = Date.parse('2026-08-17T10:00:00Z');
+    const tuesdayBeforeReminder = Date.parse('2026-08-18T17:40:00Z');
+    expect(nextStreakPushReminderAt(
+      practicedMonday,
+      'Africa/Johannesburg',
+      tuesdayBeforeReminder,
+    )).toBe(Date.parse('2026-08-18T18:00:00Z'));
+    expect(nextStreakPushReminderAt(
+      Date.parse('2026-03-09T10:00:00Z'),
+      'America/New_York',
+      Date.parse('2026-03-10T18:00:00Z'),
+    )).toBe(Date.parse('2026-03-11T00:00:00Z'));
   });
 
   test('keeps an overdue reminder due and moves today practice to tomorrow', () => {
@@ -67,23 +83,21 @@ describe('streak reminder timezone rules', () => {
   test('requires an active streak, yesterday practice, consent, and no send today', () => {
     const now = Date.parse('2026-08-18T17:00:00Z');
     const eligible = {
-      email: 'rex@example.com',
       timezone: 'Africa/Johannesburg',
       reminderPreference: 'enabled' as const,
       lastPracticeAt: Date.parse('2026-08-17T10:00:00Z'),
       currentStreakDays: 7,
-      variantIndex: 1,
     };
     expect(streakReminderEligibility(eligible, now)).toMatchObject({
-      email: 'rex@example.com',
       localDate: '2026-08-18',
       streakDays: 7,
-      variantIndex: 1,
     });
     expect(streakReminderEligibility({ ...eligible, currentStreakDays: 0 }, now)).toBeNull();
     expect(streakReminderEligibility({ ...eligible, reminderPreference: 'disabled' }, now)).toBeNull();
     expect(streakReminderEligibility({ ...eligible, lastPracticeAt: now }, now)).toBeNull();
-    expect(streakReminderEligibility({ ...eligible, lastStreakEmailAt: now }, now)).toBeNull();
+    expect(streakReminderEligibility(eligible, now)).toMatchObject({
+      localDate: '2026-08-18',
+    });
   });
 
   test('rotates 05, 07, and 10 and uses a stable per-day idempotency key', () => {

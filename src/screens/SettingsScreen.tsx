@@ -200,6 +200,20 @@ export default function SettingsScreen() {
               </View>
               <Lucide name="chevron-right" size={22} color="#737373" />
             </Pressable>
+            <Pressable
+              accessibilityLabel="Manage notification devices"
+              accessibilityRole="button"
+              onPress={() => router.push('/settings/devices' as never)}
+              style={({ pressed }) => [styles.onboardingLink, pressed && styles.onboardingLinkPressed]}
+            >
+              <View style={styles.onboardingLinkCopy}>
+                <Text selectable style={styles.onboardingLinkTitle}>Devices</Text>
+                <Text selectable style={styles.onboardingLinkDescription}>
+                  Review which devices can receive push notifications.
+                </Text>
+              </View>
+              <Lucide name="chevron-right" size={22} color="#737373" />
+            </Pressable>
           </>
         }
         ListFooterComponent={

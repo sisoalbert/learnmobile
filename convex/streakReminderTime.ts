@@ -1,5 +1,7 @@
 const DAY_MS = 86_400_000;
 const REMINDER_HOUR = 19;
+const PUSH_REMINDER_HOUR = 20;
+const PUSH_REMINDER_MINUTE = 0;
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
@@ -75,12 +77,25 @@ export function dateKeyDifference(left: string, right: string) {
   );
 }
 
-export function localTimeAt(dateKey: string, hour: number, timezone: string) {
+export function localTimeAt(dateKey: string, hour: number, timezone: string, minute = 0) {
   const [year, month, day] = dateKey.split('-').map(Number);
-  const clockAsUtc = Date.UTC(year, month - 1, day, hour, 0, 0);
+  const clockAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
   let result = clockAsUtc - timezoneOffsetAt(clockAsUtc, timezone);
   result = clockAsUtc - timezoneOffsetAt(result, timezone);
   return result;
+}
+
+export function nextStreakPushReminderAt(
+  lastPracticeAt: number,
+  timezone: string,
+  now = Date.now(),
+) {
+  const today = localDateKey(now, timezone);
+  const practiceDate = localDateKey(lastPracticeAt, timezone);
+  const age = dateKeyDifference(today, practiceDate);
+  if (age < 0 || age > 1) return undefined;
+  const reminderDate = age === 0 ? addDateKeyDays(today, 1) : today;
+  return localTimeAt(reminderDate, PUSH_REMINDER_HOUR, timezone, PUSH_REMINDER_MINUTE);
 }
 
 export function nextStreakReminderAt(

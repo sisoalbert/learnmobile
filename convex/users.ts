@@ -14,6 +14,7 @@ import {
   localTimeAt,
   longestStreakLength,
   nextStreakReminderAt,
+  nextStreakPushReminderAt,
 } from './streakReminderTime';
 
 export const current = query({
@@ -53,6 +54,8 @@ export const current = query({
       lastPracticeAt: user.lastPracticeAt,
       lastStreakEmailAt: user.lastStreakEmailAt,
       nextStreakEmailAt: user.nextStreakEmailAt,
+      lastStreakPushAt: user.lastStreakPushAt,
+      nextStreakPushAt: user.nextStreakPushAt,
       authProvider: provider === 'google' || provider === 'apple' ? provider : 'email',
       onboarding: user.onboarding,
     };
@@ -145,23 +148,29 @@ export const syncPracticeReminderContext = mutation({
     }
 
     let nextStreakEmailAt: number | undefined;
+    let nextStreakPushAt: number | undefined;
     if (
       user.onboarding?.reminderPreference === 'enabled'
-      && user.email?.trim()
       && lastPracticeAt !== undefined
       && currentDays > 0
     ) {
       const today = localDateKey(now, timezone);
-      nextStreakEmailAt = user.lastStreakEmailAt !== undefined
+      const scheduledEmailAt = user.lastStreakEmailAt !== undefined
         && localDateKey(user.lastStreakEmailAt, timezone) === today
         ? localTimeAt(addDateKeyDays(today, 1), 19, timezone)
         : nextStreakReminderAt(lastPracticeAt, timezone, now);
+      nextStreakEmailAt = user.email?.trim() ? scheduledEmailAt : undefined;
+      nextStreakPushAt = user.lastStreakPushAt !== undefined
+        && localDateKey(user.lastStreakPushAt, timezone) === today
+        ? localTimeAt(addDateKeyDays(today, 1), 20, timezone)
+        : nextStreakPushReminderAt(lastPracticeAt, timezone, now);
     }
 
     await ctx.db.patch(userId, {
       timezone,
       lastPracticeAt,
       nextStreakEmailAt,
+      nextStreakPushAt,
       streakEmailVariantIndex: user.streakEmailVariantIndex ?? 0,
     });
     return { timezone, lastPracticeAt: lastPracticeAt ?? null, nextStreakEmailAt: nextStreakEmailAt ?? null };
@@ -183,9 +192,9 @@ export const updatePracticeReminders = mutation({
     };
 
     let nextStreakEmailAt: number | undefined;
+    let nextStreakPushAt: number | undefined;
     if (
       args.enabled
-      && user.email?.trim()
       && user.timezone
       && isValidTimezone(user.timezone)
       && user.lastPracticeAt !== undefined
@@ -196,10 +205,15 @@ export const updatePracticeReminders = mutation({
         .unique();
       if ((streak?.currentDays ?? 0) > 0) {
         const today = localDateKey(now, user.timezone);
-        nextStreakEmailAt = user.lastStreakEmailAt !== undefined
+        const scheduledEmailAt = user.lastStreakEmailAt !== undefined
           && localDateKey(user.lastStreakEmailAt, user.timezone) === today
           ? localTimeAt(addDateKeyDays(today, 1), 19, user.timezone)
           : nextStreakReminderAt(user.lastPracticeAt, user.timezone, now);
+        nextStreakEmailAt = user.email?.trim() ? scheduledEmailAt : undefined;
+        nextStreakPushAt = user.lastStreakPushAt !== undefined
+          && localDateKey(user.lastStreakPushAt, user.timezone) === today
+          ? localTimeAt(addDateKeyDays(today, 1), 20, user.timezone)
+          : nextStreakPushReminderAt(user.lastPracticeAt, user.timezone, now);
       }
     }
 
@@ -210,6 +224,7 @@ export const updatePracticeReminders = mutation({
         savedAt: now,
       },
       nextStreakEmailAt,
+      nextStreakPushAt,
     });
     return { enabled: args.enabled, nextStreakEmailAt: nextStreakEmailAt ?? null };
   },

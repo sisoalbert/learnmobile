@@ -19,6 +19,7 @@ type RegisterDevice = (args: {
   installationId: string;
   expoPushToken: string;
   platform: 'ios' | 'android';
+  allowReenable: boolean;
 }) => Promise<unknown>;
 type DisableDevice = (args: { installationId: string }) => Promise<unknown>;
 type SynchronizationSource = 'home_mount' | 'app_active' | 'native_token_changed' | 'settings_toggle';
@@ -110,6 +111,7 @@ async function registerCurrentDevice(
   registerDevice: RegisterDevice,
   disableDevice: DisableDevice,
   source: SynchronizationSource,
+  allowReenable = false,
 ) {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
     logHomePush('push registration unsupported on this platform', { platform: Platform.OS, source });
@@ -132,7 +134,7 @@ async function registerCurrentDevice(
     getExpoPushTokenWithRetry(),
   ]);
   logHomePush('Expo push token acquired', { expoPushToken, source });
-  await registerDevice({ installationId, expoPushToken, platform: Platform.OS });
+  await registerDevice({ installationId, expoPushToken, platform: Platform.OS, allowReenable });
   logHomePush('Expo push token saved to Convex', { expoPushToken, installationId, source });
 }
 
@@ -152,17 +154,18 @@ export async function synchronizeStoredDevice(
   registerDevice: RegisterDevice,
   disableDevice: DisableDevice,
 ) {
-  await synchronizeCurrentDevice(registerDevice, disableDevice, 'settings_toggle');
+  await synchronizeCurrentDevice(registerDevice, disableDevice, 'settings_toggle', true);
 }
 
 function synchronizeCurrentDevice(
   registerDevice: RegisterDevice,
   disableDevice: DisableDevice,
   source: SynchronizationSource,
+  allowReenable = false,
 ) {
   if (activeSynchronization) return activeSynchronization;
 
-  activeSynchronization = registerCurrentDevice(registerDevice, disableDevice, source)
+  activeSynchronization = registerCurrentDevice(registerDevice, disableDevice, source, allowReenable)
     .catch((error) => {
       logHomePush('registration failed', {
         message: error instanceof Error ? error.message : String(error),

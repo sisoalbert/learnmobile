@@ -36,6 +36,8 @@ export default defineSchema({
     lastPracticeAt: v.optional(v.number()),
     lastStreakEmailAt: v.optional(v.number()),
     nextStreakEmailAt: v.optional(v.number()),
+    lastStreakPushAt: v.optional(v.number()),
+    nextStreakPushAt: v.optional(v.number()),
     streakEmailVariantIndex: v.optional(v.number()),
     deletionPendingAt: v.optional(v.number()),
     onboarding: v.optional(userOnboardingValidator),
@@ -43,7 +45,8 @@ export default defineSchema({
     .index('email', ['email'])
     .index('phone', ['phone'])
     .index('normalizedUsername', ['normalizedUsername'])
-    .index('by_nextStreakEmailAt', ['nextStreakEmailAt']),
+    .index('by_nextStreakEmailAt', ['nextStreakEmailAt'])
+    .index('by_nextStreakPushAt', ['nextStreakPushAt']),
   tasks: defineTable({
     text: v.string(),
     isCompleted: v.boolean(),
@@ -315,6 +318,7 @@ export default defineSchema({
     updatedAt: v.number(),
     lastSeenAt: v.optional(v.number()),
     disabledAt: v.optional(v.number()),
+    removedAt: v.optional(v.number()),
   })
     .index('by_installation', ['installationId'])
     .index('by_push_token', ['expoPushToken'])
@@ -322,7 +326,9 @@ export default defineSchema({
     .index('by_user_push_enabled', ['userId', 'pushEnabled']),
   pushNotificationDeliveries: defineTable({
     userId: v.id('users'),
-    lessonAttemptId: v.id('lessonAttempts'),
+    lessonAttemptId: v.optional(v.id('lessonAttempts')),
+    type: v.optional(v.union(v.literal('lesson_completed'), v.literal('streak_reminder'))),
+    reminderDate: v.optional(v.string()),
     deviceId: v.id('devices'),
     ticketId: v.optional(v.string()),
     status: v.union(
