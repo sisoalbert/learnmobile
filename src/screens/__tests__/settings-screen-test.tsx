@@ -38,6 +38,19 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ canGoBack: () => false, push: mockPush, replace: mockReplace }),
 }));
 
+jest.mock('expo-constants', () => ({
+  expoConfig: { extra: { pushNumber: 7 } },
+}));
+
+jest.mock('expo-updates', () => ({
+  channel: 'preview',
+  runtimeVersion: '1.0.8',
+  isEnabled: true,
+  checkForUpdateAsync: jest.fn(),
+  fetchUpdateAsync: jest.fn(),
+  reloadAsync: jest.fn(),
+}));
+
 jest.mock('@/state/clear-all-zustand-stores', () => ({
   clearAllZustandStores: jest.fn().mockResolvedValue(undefined),
 }));
@@ -84,6 +97,13 @@ describe('feedback settings', () => {
     fireEvent.press(screen.getByLabelText('View onboarding selections'));
 
     expect(mockPush).toHaveBeenCalledWith('/settings/onboarding');
+  });
+
+  test('shows the manually maintained push number beside channel and runtime', () => {
+    const screen = render(<SettingsScreen />);
+
+    expect(screen.getByText('Channel preview · Runtime 1.0.8 · Push 7')).toBeTruthy();
+    expect(screen.queryByLabelText('Reset onboarding data')).toBeNull();
   });
 
   test('uses Convex onboarding data instead of another device’s local selections', () => {
@@ -134,7 +154,7 @@ describe('feedback settings', () => {
 
   test('resets all local data for guest user without signing out from convex', async () => {
     mockIsAuthenticated = false;
-    const screen = render(<SettingsScreen />);
+    const screen = render(<OnboardingSettingsScreen />);
 
     await act(async () => {
       fireEvent.press(screen.getByLabelText('Reset onboarding data'));
@@ -150,7 +170,7 @@ describe('feedback settings', () => {
   test('resets all local data and signs out for authenticated user', async () => {
     mockIsAuthenticated = true;
     mockSignOutFromConvex.mockResolvedValue(undefined);
-    const screen = render(<SettingsScreen />);
+    const screen = render(<OnboardingSettingsScreen />);
 
     await act(async () => {
       fireEvent.press(screen.getByLabelText('Reset onboarding data'));
@@ -161,5 +181,19 @@ describe('feedback settings', () => {
       expect(clearAllZustandStores).toHaveBeenCalled();
       expect(mockReplace).toHaveBeenCalledWith('/');
     });
+  });
+
+  test('hides reset onboarding for authenticated production users', () => {
+    mockIsAuthenticated = true;
+    const devGlobal = globalThis as typeof globalThis & { __DEV__: boolean };
+    const previousDev = devGlobal.__DEV__;
+    devGlobal.__DEV__ = false;
+
+    try {
+      const screen = render(<OnboardingSettingsScreen />);
+      expect(screen.queryByLabelText('Reset onboarding data')).toBeNull();
+    } finally {
+      devGlobal.__DEV__ = previousDev;
+    }
   });
 });

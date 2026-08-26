@@ -1,8 +1,11 @@
+import { useAuthActions } from '@convex-dev/auth/react';
+import * as Sentry from '@sentry/react-native';
 import { useMemo } from 'react';
-import { useConvexAuth, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Lucide } from '@react-native-vector-icons/lucide';
 
 import { Header } from '@/common';
 import {
@@ -15,6 +18,9 @@ import {
   STARTING_POINTS,
 } from '@/features/onboarding/onboarding-content';
 import { useOnboardingStore } from '@/state/onboarding-store';
+import { feedback } from '@/services/feedback';
+import { disableStoredDevice } from '@/services/notifications/push-notification-manager';
+import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
 import { api } from '../../convex/_generated/api';
 
 type SelectionItem = {
@@ -32,9 +38,44 @@ export default function OnboardingSettingsScreen() {
   const router = useRouter();
   const onboarding = useOnboardingStore();
   const { isAuthenticated } = useConvexAuth();
+  const { signOut: signOutFromConvex } = useAuthActions();
+  const disableDevice = useMutation(api.notifications.disableDevice);
   const currentUser = useQuery(api.users.current, isAuthenticated ? {} : 'skip');
   const savedOnboarding = isAuthenticated ? currentUser?.onboarding : onboarding;
   const isLoading = !onboarding.hasHydrated || (isAuthenticated && currentUser === undefined);
+  const showResetOnboarding = onboarding.hasHydrated && (!isAuthenticated || __DEV__);
+
+  const handleReset = async () => {
+    feedback.play('buttonTap');
+
+    if (isAuthenticated) {
+      try {
+        await disableStoredDevice(disableDevice);
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: { area: 'notifications', operation: 'disable_device_before_reset' },
+        });
+      }
+
+      try {
+        await signOutFromConvex();
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: { area: 'auth', operation: 'sign_out_on_reset' },
+        });
+      }
+    }
+
+    try {
+      await clearAllZustandStores();
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: 'storage', operation: 'clear_stores_on_reset' },
+      });
+    }
+
+    router.replace('/');
+  };
   const selections = useMemo<SelectionItem[]>(() => {
     if (!savedOnboarding) return [];
 
@@ -87,6 +128,25 @@ export default function OnboardingSettingsScreen() {
             </Text>
           </View>
         }
+        ListFooterComponent={showResetOnboarding ? (
+          <View style={styles.resetSection}>
+            <Text selectable style={styles.resetDescription}>
+              This will clear all local data, sign you out, and return you to the Welcome screen.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Reset onboarding data"
+              onPress={() => void handleReset()}
+              style={({ pressed }) => [
+                styles.resetButton,
+                pressed && styles.resetButtonPressed,
+              ]}
+            >
+              <Lucide name="rotate-ccw" size={19} color="#D64545" />
+              <Text style={styles.resetButtonText}>RESET ONBOARDING</Text>
+            </Pressable>
+          </View>
+        ) : null}
         renderItem={({ item }) => (
           <View style={styles.selectionCard}>
             <Text selectable style={styles.selectionLabel}>{item.label}</Text>
@@ -111,4 +171,9 @@ const styles = StyleSheet.create({
   selectionValue: { color: '#2D2D2D', fontSize: 16, fontWeight: '700', lineHeight: 22 },
   separator: { height: 10 },
   loadingText: { color: '#737373', fontSize: 15, textAlign: 'center' },
+  resetSection: { gap: 12, paddingTop: 28 },
+  resetDescription: { color: '#737373', fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  resetButton: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, paddingHorizontal: 18, paddingVertical: 14, borderWidth: 1.5, borderColor: '#D64545', borderRadius: 14, borderCurve: 'continuous', backgroundColor: '#FFF7F7' },
+  resetButtonPressed: { opacity: 0.68 },
+  resetButtonText: { color: '#D64545', fontSize: 14, fontWeight: '800', letterSpacing: 0.6 },
 });

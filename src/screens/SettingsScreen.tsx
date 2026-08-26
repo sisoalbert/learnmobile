@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useAuthActions } from '@convex-dev/auth/react';
 import * as Sentry from '@sentry/react-native';
 import { useConvexAuth, useMutation, useQuery } from 'convex/react';
+import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { Alert, FlatList, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,14 +15,12 @@ import {
   disableStoredDevice,
   synchronizeStoredDevice,
 } from '@/services/notifications/push-notification-manager';
-import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
 import { api } from '../../convex/_generated/api';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const onboarding = useOnboardingStore();
   const { isAuthenticated } = useConvexAuth();
-  const { signOut: signOutFromConvex } = useAuthActions();
   const disableDevice = useMutation(api.notifications.disableDevice);
   const registerDevice = useMutation(api.notifications.registerDevice);
   const updatePracticeReminders = useMutation(api.users.updatePracticeReminders);
@@ -42,47 +40,6 @@ export default function SettingsScreen() {
   const [isCheckingForUpdate, setIsCheckingForUpdate] = useState(false);
   const [isUpdatingReminders, setIsUpdatingReminders] = useState(false);
   const practiceRemindersEnabled = currentUser?.onboarding?.reminderPreference === 'enabled';
-
-  const handleReset = async () => {
-    feedback.play('buttonTap');
-
-    if (isAuthenticated) {
-      try {
-        await disableStoredDevice(disableDevice);
-      } catch (error) {
-        Sentry.captureException(error, {
-          tags: {
-            area: 'notifications',
-            operation: 'disable_device_before_reset',
-          },
-        });
-      }
-
-      try {
-        await signOutFromConvex();
-      } catch (error) {
-        Sentry.captureException(error, {
-          tags: {
-            area: 'auth',
-            operation: 'sign_out_on_reset',
-          },
-        });
-      }
-    }
-
-    try {
-      await clearAllZustandStores();
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: {
-          area: 'storage',
-          operation: 'clear_stores_on_reset',
-        },
-      });
-    }
-
-    router.replace('/');
-  };
 
   const handleSoundEffectsChange = (enabled: boolean) => {
     if (enabled) {
@@ -186,34 +143,36 @@ export default function SettingsScreen() {
                 Manage your app preferences.
               </Text>
             </View>
-            <Pressable
-              accessibilityLabel="View onboarding selections"
-              accessibilityRole="button"
-              onPress={() => router.push('/settings/onboarding')}
-              style={({ pressed }) => [styles.onboardingLink, pressed && styles.onboardingLinkPressed]}
-            >
-              <View style={styles.onboardingLinkCopy}>
-                <Text selectable style={styles.onboardingLinkTitle}>Onboarding selections</Text>
-                <Text selectable style={styles.onboardingLinkDescription}>
-                  Review the goals and preferences you chose when getting started.
-                </Text>
-              </View>
-              <Lucide name="chevron-right" size={22} color="#737373" />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Manage notification devices"
-              accessibilityRole="button"
-              onPress={() => router.push('/settings/devices' as never)}
-              style={({ pressed }) => [styles.onboardingLink, pressed && styles.onboardingLinkPressed]}
-            >
-              <View style={styles.onboardingLinkCopy}>
-                <Text selectable style={styles.onboardingLinkTitle}>Devices</Text>
-                <Text selectable style={styles.onboardingLinkDescription}>
-                  Review which devices can receive push notifications.
-                </Text>
-              </View>
-              <Lucide name="chevron-right" size={22} color="#737373" />
-            </Pressable>
+            <View style={styles.settingsLinks}>
+              <Pressable
+                accessibilityLabel="View onboarding selections"
+                accessibilityRole="button"
+                onPress={() => router.push('/settings/onboarding')}
+                style={({ pressed }) => [styles.onboardingLink, pressed && styles.onboardingLinkPressed]}
+              >
+                <View style={styles.onboardingLinkCopy}>
+                  <Text selectable style={styles.onboardingLinkTitle}>Onboarding selections</Text>
+                  <Text selectable style={styles.onboardingLinkDescription}>
+                    Review the goals and preferences you chose when getting started.
+                  </Text>
+                </View>
+                <Lucide name="chevron-right" size={22} color="#737373" />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Manage notification devices"
+                accessibilityRole="button"
+                onPress={() => router.push('/settings/devices' as never)}
+                style={({ pressed }) => [styles.onboardingLink, pressed && styles.onboardingLinkPressed]}
+              >
+                <View style={styles.onboardingLinkCopy}>
+                  <Text selectable style={styles.onboardingLinkTitle}>Devices</Text>
+                  <Text selectable style={styles.onboardingLinkDescription}>
+                    Review which devices can receive push notifications.
+                  </Text>
+                </View>
+                <Lucide name="chevron-right" size={22} color="#737373" />
+              </Pressable>
+            </View>
           </>
         }
         ListFooterComponent={
@@ -290,7 +249,7 @@ export default function SettingsScreen() {
                 </Text>
                 <Text selectable style={styles.updateDescription}>
                   {Updates.isEnabled
-                    ? `Channel ${Updates.channel ?? 'unassigned'} · Runtime ${Updates.runtimeVersion ?? 'unknown'}`
+                    ? `Channel ${Updates.channel ?? 'unassigned'} · Runtime ${Updates.runtimeVersion ?? 'unknown'} · Push ${Constants.expoConfig?.extra?.pushNumber ?? 'unknown'}`
                     : 'Available in preview and production builds.'}
                 </Text>
               </View>
@@ -311,25 +270,6 @@ export default function SettingsScreen() {
                 </Text>
               </Pressable>
             </View>
-            {onboarding.hasHydrated ? (
-              <View style={styles.resetSection}>
-                <Text selectable style={styles.resetDescription}>
-                  This will clear all local data, sign you out, and return you to the Welcome screen.
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Reset onboarding data"
-                  onPress={() => void handleReset()}
-                  style={({ pressed }) => [
-                    styles.resetButton,
-                    pressed && styles.resetButtonPressed,
-                  ]}
-                >
-                  <Lucide name="rotate-ccw" size={19} color="#D64545" />
-                  <Text style={styles.resetButtonText}>RESET ONBOARDING</Text>
-                </Pressable>
-              </View>
-            ) : null}
           </View>
         }
         contentContainerStyle={styles.content}
@@ -380,6 +320,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderCurve: 'continuous',
     backgroundColor: '#FFFFFF',
+  },
+  settingsLinks: {
+    gap: 12,
   },
   onboardingLinkPressed: {
     opacity: 0.72,
@@ -465,38 +408,6 @@ const styles = StyleSheet.create({
   },
   updateButtonText: {
     color: '#1899D6',
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  resetSection: {
-    gap: 12,
-  },
-  resetDescription: {
-    color: '#737373',
-    fontSize: 13,
-    lineHeight: 19,
-    textAlign: 'center',
-  },
-  resetButton: {
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderWidth: 1.5,
-    borderColor: '#D64545',
-    borderRadius: 14,
-    borderCurve: 'continuous',
-    backgroundColor: '#FFF7F7',
-  },
-  resetButtonPressed: {
-    opacity: 0.68,
-  },
-  resetButtonText: {
-    color: '#D64545',
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.6,

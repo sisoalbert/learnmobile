@@ -101,6 +101,7 @@ export default {
     },
     extra: {
       router: {},
+      pushNumber: 2,
       adMob: {
         isProduction,
       },
