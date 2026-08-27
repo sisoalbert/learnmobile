@@ -87,6 +87,8 @@ function CalendarDay({ compact, day, isToday, monthTitle }: { compact: boolean; 
       <View style={[styles.dayCircle, compact && styles.dayCircleCompact, day.completed && styles.dayCircleCompleted, isToday && styles.dayCircleToday]}>
         {day.completed ? (
           <Lucide color="#FFFFFF" name="check" size={compact ? 19 : 22} />
+        ) : day.frozen ? (
+          <Text selectable style={[styles.dayInitial, compact && styles.dayInitialCompact]}>🧊</Text>
         ) : (
           <Text selectable style={[styles.dayInitial, compact && styles.dayInitialCompact]}>{day.label.slice(0, 1)}</Text>
         )}

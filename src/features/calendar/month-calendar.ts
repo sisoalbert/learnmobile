@@ -2,13 +2,14 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 
 export type MonthCalendarDay = {
   completed: boolean;
+  frozen?: boolean;
   dateKey: string;
   dayNumber: number;
   inMonth: boolean;
   label: typeof WEEKDAY_NAMES[number];
 };
 
-export function buildUtcMonthWeeks(monthKey: string, completedDateKeys: string[]): MonthCalendarDay[][] {
+export function buildUtcMonthWeeks(monthKey: string, completedDateKeys: string[], frozenDateKeys: string[] = []): MonthCalendarDay[][] {
   const match = /^(\d{4})-(\d{2})$/.exec(monthKey);
   if (!match) return [];
 
@@ -23,6 +24,7 @@ export function buildUtcMonthWeeks(monthKey: string, completedDateKeys: string[]
   const gridStart = new Date(firstDay);
   gridStart.setUTCDate(firstDay.getUTCDate() - mondayOffset);
   const completed = new Set(completedDateKeys);
+  const frozen = new Set(frozenDateKeys);
 
   return Array.from({ length: weekCount }, (_, weekIndex) =>
     Array.from({ length: 7 }, (_, dayIndex): MonthCalendarDay => {
@@ -32,6 +34,7 @@ export function buildUtcMonthWeeks(monthKey: string, completedDateKeys: string[]
 
       return {
         completed: completed.has(dateKey),
+        frozen: frozen.has(dateKey),
         dateKey,
         dayNumber: date.getUTCDate(),
         inMonth: date.getUTCFullYear() === year && date.getUTCMonth() === monthIndex,
