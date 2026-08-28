@@ -213,10 +213,14 @@ Changing native dependencies or native configuration requires a new store build.
 ### Workflow
 
 1. Make your JS/asset changes
-2. Publish to preview with `npm run update:preview -- --message "your message"`
-3. Verify the update in a preview release build
-4. Publish the verified commit with `npm run update:production -- --message "your message"`
-5. Production builds download updates on launch and apply them after restart, or users can check manually in Settings
+2. Increase `extra.pushNumber` in `app.config.ts` for the next displayed push number
+3. Publish to preview with `npm run update:preview -- --message "your message"`
+4. Verify the update in a preview release build
+5. Publish the verified commit with `npm run update:production -- --message "your message"`
+6. Confirm the update with `eas update:list --branch production --limit 1`
+7. Production builds download updates on launch and apply them after restart, or users can check manually in Settings
+
+`pushNumber` is manual metadata bundled into the OTA. EAS build `autoIncrement` does not change it, so increase it before publishing the update you want users to see.
 
 ## Deep Linking (Universal Links & App Links)
 

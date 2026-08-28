@@ -95,6 +95,24 @@ npm run update:production -- --message "Describe the update"
 
 Production builds on the `production` channel will download the update when the runtime version matches.
 
+### 5. Confirm the published OTA and update the displayed push number
+
+After EAS reports **Published**, keep the update group ID from the command output and confirm it is the latest production update:
+
+```bash
+eas update:list --branch production --limit 1
+```
+
+The app's displayed push number is managed manually in `app.config.ts`:
+
+```ts
+extra: {
+  pushNumber: 2,
+}
+```
+
+Before the next OTA, increase `pushNumber` by one and include that change in the update. EAS `autoIncrement` applies to native builds only; it does not increment this value for OTA updates. Because the value is bundled into the app update, changing it after publishing requires another OTA.
+
 ## Runtime compatibility
 
 The project uses:
