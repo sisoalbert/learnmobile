@@ -4,6 +4,7 @@ import { v } from 'convex/values';
 import { internal } from './_generated/api';
 import { makeFunctionReference } from 'convex/server';
 import type { Id } from './_generated/dataModel';
+import { streakReminderTemplate } from './streakReminderContent';
 import {
   internalAction,
   internalMutation,
@@ -20,7 +21,7 @@ const MAX_FETCH_ATTEMPTS = 3;
 const getStreakReminderPushContextRef = makeFunctionReference<
   'query',
   { userId: Id<'users'>; localDate: string },
-  { localDate: string; streakDays: number; devices: { deviceId: Id<'devices'>; expoPushToken: string }[] } | null
+  { localDate: string; streakDays: number; freezeDay: 1 | 2 | 3; devices: { deviceId: Id<'devices'>; expoPushToken: string }[] } | null
 >('streakReminders:getStreakReminderPushContext');
 const finalizeStreakPushReminderRef = makeFunctionReference<
   'mutation',
@@ -523,6 +524,7 @@ export const sendStreakReminderPush = internalAction({
       return null;
     }
 
+    const template = streakReminderTemplate(context.freezeDay);
     let responseData: unknown;
     try {
       const response = await postToExpo(
@@ -531,8 +533,8 @@ export const sendStreakReminderPush = internalAction({
           to: device.expoPushToken,
           sound: 'default',
           channelId: 'learning',
-          title: 'Your streak is at risk 🔥',
-          body: `Keep your ${context.streakDays}-day streak going — complete a lesson today.`,
+          title: template.subject,
+          body: template.body,
           data: { type: 'streakReminder', url: '/home' },
         })),
         requireAccessToken(),

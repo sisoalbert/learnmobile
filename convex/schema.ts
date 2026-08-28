@@ -217,6 +217,9 @@ export default defineSchema({
     currentDays: v.number(),
     longestDays: v.number(),
     lastQualifiedDate: v.optional(v.string()),
+    frozenDaysUsed: v.optional(v.number()),
+    freezeStartedDate: v.optional(v.string()),
+    lastFreezeReminderDate: v.optional(v.string()),
     updatedAt: v.number(),
   }).index('by_user', ['userId']),
   learnerRewards: defineTable({

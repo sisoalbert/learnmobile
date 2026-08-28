@@ -16,7 +16,7 @@ type ReminderContext = {
   localDate: string;
   streakDays: number;
   timezone: string;
-  variantIndex: number;
+  freezeDay: 1 | 2 | 3;
 } | null;
 
 const getReminderContextRef = makeFunctionReference<
@@ -40,7 +40,6 @@ const finalizeReminderRef = makeFunctionReference<
     userId: Id<'users'>;
     localDate: string;
     sentAt: number;
-    variantIndex: number;
   },
   null
 >('streakReminders:finalizeStreakReminder');
@@ -74,14 +73,12 @@ export const sendStreakReminderEmail = internalAction({
       throw new Error('RESEND_API_KEY is not configured');
     }
 
-    const template = streakReminderTemplate(context.variantIndex);
+    const template = streakReminderTemplate(context.freezeDay);
     const recipient = process.env.RESEND_TEST_RECIPIENT ?? context.email;
     const from = process.env.STREAK_EMAIL_FROM
       ?? 'Rex at Learn Expo <reminders@updates.learnexpo.online>';
     const learningUrl = 'https://learnexpo.online/home';
     const settingsUrl = 'https://learnexpo.online/profile/settings';
-    const streakLabel = `${context.streakDays}-day streak`;
-
     try {
       const resend = new Resend(apiKey);
       const { data, error } = await resend.emails.send({
@@ -93,7 +90,7 @@ export const sendStreakReminderEmail = internalAction({
             <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;padding:32px;box-shadow:0 8px 24px rgba(23,33,59,.08);">
               <div style="font-size:42px;line-height:1;text-align:center;">🦖</div>
               <p style="margin:10px 0 0;text-align:center;color:#667085;font-weight:700;">Rex from Learn Expo</p>
-              <h1 style="margin:18px 0 12px;text-align:center;font-size:28px;line-height:1.2;color:#f28b19;">Your ${escapeHtml(streakLabel)} is at risk 🔥</h1>
+              <h1 style="margin:18px 0 12px;text-align:center;font-size:28px;line-height:1.2;color:#f28b19;">${escapeHtml(template.subject)}</h1>
               <p style="margin:0 0 26px;font-size:17px;line-height:1.6;color:#4b5565;">${escapeHtml(template.body)}</p>
               <div style="text-align:center;">
                 <a href="${escapeHtml(learningUrl)}" style="display:inline-block;background:#2289fd;color:#ffffff;text-decoration:none;font-weight:900;padding:15px 24px;border-radius:14px;">${escapeHtml(template.cta)}</a>
@@ -103,7 +100,7 @@ export const sendStreakReminderEmail = internalAction({
           </div>
         `,
         text: [
-          `Rex here — your ${streakLabel} is at risk!`,
+          template.subject,
           '',
           template.body,
           '',
@@ -127,7 +124,6 @@ export const sendStreakReminderEmail = internalAction({
         userId: args.userId,
         localDate: args.localDate,
         sentAt: Date.now(),
-        variantIndex: context.variantIndex,
       });
       return null;
     } catch (error) {

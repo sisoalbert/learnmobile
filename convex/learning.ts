@@ -22,6 +22,8 @@ import {
   longestStreakLength,
   nextStreakReminderAt,
   nextStreakPushReminderAt,
+  streakDaysAfterPractice,
+  streakFreezeState,
 } from './streakReminderTime';
 
 const HEARTS_DEFAULT = 5;
@@ -38,6 +40,11 @@ const sendLessonCompletedNotificationRef = makeFunctionReference<
   { userId: Id<'users'>; attemptId: Id<'lessonAttempts'> },
   null
 >('notifications:sendLessonCompleted');
+const advanceStreakFreezeRef = makeFunctionReference<
+  'mutation',
+  { userId: Id<'users'>; lastQualifiedDate: string },
+  null
+>('streakReminders:advanceStreakFreeze');
 
 type Owner =
   | { ownerType: 'user'; userId: Id<'users'>; learnerSessionId?: undefined }
@@ -266,10 +273,6 @@ async function progressForAttempt(ctx: QueryCtx | MutationCtx, owner: Owner, att
   return progress;
 }
 
-function dateDifference(left: string, right: string) {
-  return Math.round((Date.parse(`${left}T00:00:00Z`) - Date.parse(`${right}T00:00:00Z`)) / 86_400_000);
-}
-
 async function timezoneForOwner(ctx: QueryCtx | MutationCtx, owner: Owner) {
   if (owner.ownerType !== 'user') return 'UTC';
   const user = await ctx.db.get(owner.userId);
@@ -396,15 +399,28 @@ async function guestStreak(ctx: QueryCtx | MutationCtx, learnerSessionId: Id<'le
 async function updateStreak(ctx: MutationCtx, userId: Id<'users'>, dateKey: string) {
   const streak = await ctx.db.query('streaks').withIndex('by_user', (q) => q.eq('userId', userId)).unique();
   if (!streak) {
-    await ctx.db.insert('streaks', { userId, currentDays: 1, longestDays: 1, lastQualifiedDate: dateKey, updatedAt: Date.now() });
+    await ctx.db.insert('streaks', {
+      userId,
+      currentDays: 1,
+      longestDays: 1,
+      lastQualifiedDate: dateKey,
+      frozenDaysUsed: 0,
+      updatedAt: Date.now(),
+    });
     return 1;
   }
-  const difference = streak.lastQualifiedDate ? dateDifference(dateKey, streak.lastQualifiedDate) : 1;
-  const currentDays = difference === 0 ? streak.currentDays : difference === 1 ? streak.currentDays + 1 : 1;
+  const currentDays = streakDaysAfterPractice(
+    streak.currentDays,
+    streak.lastQualifiedDate,
+    dateKey,
+  );
   await ctx.db.patch(streak._id, {
     currentDays,
     longestDays: Math.max(streak.longestDays, currentDays),
     lastQualifiedDate: dateKey,
+    frozenDaysUsed: 0,
+    freezeStartedDate: undefined,
+    lastFreezeReminderDate: undefined,
     updatedAt: Date.now(),
   });
   return currentDays;
@@ -573,6 +589,13 @@ async function completeAttempt(ctx: MutationCtx, owner: Owner, attemptId: Id<'le
       nextStreakEmailAt,
       nextStreakPushAt,
     });
+    if (firstLessonToday && user?.timezone && isValidTimezone(user.timezone)) {
+      await ctx.scheduler.runAt(
+        localTimeAt(addDateKeyDays(dateKey, 1), 0, user.timezone),
+        advanceStreakFreezeRef,
+        { userId: owner.userId, lastQualifiedDate: dateKey },
+      );
+    }
   }
   else await ctx.db.patch(owner.learnerSessionId, { lastSeenAt: timestamp });
 
@@ -885,20 +908,26 @@ export const mergeGuestProgress = mutation({
     const today = localDateKey(Date.now(), timezone);
     const currentDays = currentStreakLength(dates, today);
     const longestDays = longestStreakLength(dates);
+    const freezeState = streakFreezeState(currentDays, dates.at(-1), today);
     const streak = await ctx.db.query('streaks').withIndex('by_user', (q) => q.eq('userId', user.userId)).unique();
     if (streak) {
       await ctx.db.patch(streak._id, {
-        currentDays,
+        currentDays: freezeState.currentDays,
         longestDays: Math.max(streak.longestDays, longestDays),
         lastQualifiedDate: dates.at(-1),
+        frozenDaysUsed: freezeState.frozenDaysUsed,
+        freezeStartedDate: freezeState.freezeStartedDate,
+        lastFreezeReminderDate: undefined,
         updatedAt: Date.now(),
       });
     } else if (dates.length > 0) {
       await ctx.db.insert('streaks', {
         userId: user.userId,
-        currentDays,
+        currentDays: freezeState.currentDays,
         longestDays,
         lastQualifiedDate: dates.at(-1),
+        frozenDaysUsed: freezeState.frozenDaysUsed,
+        freezeStartedDate: freezeState.freezeStartedDate,
         updatedAt: Date.now(),
       });
     }

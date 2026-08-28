@@ -6,6 +6,8 @@ import { v } from 'convex/values';
 import { mutation, query, httpAction, internalMutation } from './_generated/server';
 import { internal } from './_generated/api';
 import { startUserDeletion } from './userDeletion';
+import { makeFunctionReference } from 'convex/server';
+import type { Id } from './_generated/dataModel';
 import {
   addDateKeyDays,
   currentStreakLength,
@@ -15,7 +17,15 @@ import {
   longestStreakLength,
   nextStreakReminderAt,
   nextStreakPushReminderAt,
+  streakFreezeState,
 } from './streakReminderTime';
+import { hasStreakReminderTarget } from './streakReminderRules';
+
+const advanceStreakFreezeRef = makeFunctionReference<
+  'mutation',
+  { userId: Id<'users'>; lastQualifiedDate: string },
+  null
+>('streakReminders:advanceStreakFreeze');
 
 export const current = query({
   args: {},
@@ -75,6 +85,7 @@ export const syncPracticeReminderContext = mutation({
     const now = Date.now();
     let lastPracticeAt = user.lastPracticeAt;
     let currentDays = 0;
+    const shouldScheduleFreeze = user.timezone !== timezone || lastPracticeAt === undefined;
 
     if (user.timezone !== timezone || lastPracticeAt === undefined) {
       const completedAttempts = (await ctx.db
@@ -123,29 +134,53 @@ export const syncPracticeReminderContext = mutation({
         .withIndex('by_user', (q) => q.eq('userId', userId))
         .unique();
       const lastQualifiedDate = dateKeys.sort().at(-1);
+      const freezeState = streakFreezeState(currentDays, lastQualifiedDate, today);
       if (streak) {
         await ctx.db.patch(streak._id, {
-          currentDays,
+          currentDays: freezeState.currentDays,
           longestDays: Math.max(streak.longestDays, computedLongest),
           lastQualifiedDate,
+          frozenDaysUsed: freezeState.frozenDaysUsed,
+          freezeStartedDate: freezeState.freezeStartedDate,
           updatedAt: now,
         });
       } else if (lastQualifiedDate) {
         await ctx.db.insert('streaks', {
           userId,
-          currentDays,
+          currentDays: freezeState.currentDays,
           longestDays: computedLongest,
           lastQualifiedDate,
+          frozenDaysUsed: freezeState.frozenDaysUsed,
+          freezeStartedDate: freezeState.freezeStartedDate,
           updatedAt: now,
         });
       }
+      currentDays = freezeState.currentDays;
     } else {
       const streak = await ctx.db
         .query('streaks')
         .withIndex('by_user', (q) => q.eq('userId', userId))
         .unique();
-      currentDays = streak?.currentDays ?? 0;
+      if (streak) {
+        const freezeState = streakFreezeState(
+          streak.currentDays,
+          streak.lastQualifiedDate,
+          localDateKey(now, timezone),
+        );
+        currentDays = freezeState.currentDays;
+        await ctx.db.patch(streak._id, {
+          currentDays: freezeState.currentDays,
+          frozenDaysUsed: freezeState.frozenDaysUsed,
+          freezeStartedDate: freezeState.freezeStartedDate,
+          updatedAt: now,
+        });
+      }
     }
+
+    const pushDevices = await ctx.db.query('devices')
+      .withIndex('by_user_push_enabled', (q) => q.eq('userId', userId).eq('pushEnabled', true))
+      .collect();
+    const hasPushToken = pushDevices.some((device) => hasStreakReminderTarget(device.expoPushToken));
 
     let nextStreakEmailAt: number | undefined;
     let nextStreakPushAt: number | undefined;
@@ -160,10 +195,12 @@ export const syncPracticeReminderContext = mutation({
         ? localTimeAt(addDateKeyDays(today, 1), 19, timezone)
         : nextStreakReminderAt(lastPracticeAt, timezone, now);
       nextStreakEmailAt = user.email?.trim() ? scheduledEmailAt : undefined;
-      nextStreakPushAt = user.lastStreakPushAt !== undefined
-        && localDateKey(user.lastStreakPushAt, timezone) === today
-        ? localTimeAt(addDateKeyDays(today, 1), 20, timezone)
-        : nextStreakPushReminderAt(lastPracticeAt, timezone, now);
+      nextStreakPushAt = hasPushToken
+        ? user.lastStreakPushAt !== undefined
+          && localDateKey(user.lastStreakPushAt, timezone) === today
+          ? localTimeAt(addDateKeyDays(today, 1), 20, timezone)
+          : nextStreakPushReminderAt(lastPracticeAt, timezone, now)
+        : undefined;
     }
 
     await ctx.db.patch(userId, {
@@ -173,6 +210,17 @@ export const syncPracticeReminderContext = mutation({
       nextStreakPushAt,
       streakEmailVariantIndex: user.streakEmailVariantIndex ?? 0,
     });
+    const streak = await ctx.db.query('streaks')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique();
+    if (shouldScheduleFreeze && streak?.lastQualifiedDate && currentDays > 0) {
+      const today = localDateKey(now, timezone);
+      await ctx.scheduler.runAt(
+        localTimeAt(addDateKeyDays(today, 1), 0, timezone),
+        advanceStreakFreezeRef,
+        { userId, lastQualifiedDate: streak.lastQualifiedDate },
+      );
+    }
     return { timezone, lastPracticeAt: lastPracticeAt ?? null, nextStreakEmailAt: nextStreakEmailAt ?? null };
   },
 });
@@ -193,6 +241,10 @@ export const updatePracticeReminders = mutation({
 
     let nextStreakEmailAt: number | undefined;
     let nextStreakPushAt: number | undefined;
+    const pushDevices = await ctx.db.query('devices')
+      .withIndex('by_user_push_enabled', (q) => q.eq('userId', userId).eq('pushEnabled', true))
+      .collect();
+    const hasPushToken = pushDevices.some((device) => hasStreakReminderTarget(device.expoPushToken));
     if (
       args.enabled
       && user.timezone
@@ -210,10 +262,12 @@ export const updatePracticeReminders = mutation({
           ? localTimeAt(addDateKeyDays(today, 1), 19, user.timezone)
           : nextStreakReminderAt(user.lastPracticeAt, user.timezone, now);
         nextStreakEmailAt = user.email?.trim() ? scheduledEmailAt : undefined;
-        nextStreakPushAt = user.lastStreakPushAt !== undefined
-          && localDateKey(user.lastStreakPushAt, user.timezone) === today
-          ? localTimeAt(addDateKeyDays(today, 1), 20, user.timezone)
-          : nextStreakPushReminderAt(user.lastPracticeAt, user.timezone, now);
+        nextStreakPushAt = hasPushToken
+          ? user.lastStreakPushAt !== undefined
+            && localDateKey(user.lastStreakPushAt, user.timezone) === today
+            ? localTimeAt(addDateKeyDays(today, 1), 20, user.timezone)
+            : nextStreakPushReminderAt(user.lastPracticeAt, user.timezone, now)
+          : undefined;
       }
     }
 

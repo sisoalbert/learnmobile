@@ -3,6 +3,9 @@ const REMINDER_HOUR = 19;
 const PUSH_REMINDER_HOUR = 20;
 const PUSH_REMINDER_MINUTE = 0;
 
+export const MAX_STREAK_FREEZE_DAYS = 3;
+export type StreakFreezeDay = 1 | 2 | 3;
+
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
 function formatterFor(timezone: string) {
@@ -93,7 +96,7 @@ export function nextStreakPushReminderAt(
   const today = localDateKey(now, timezone);
   const practiceDate = localDateKey(lastPracticeAt, timezone);
   const age = dateKeyDifference(today, practiceDate);
-  if (age < 0 || age > 1) return undefined;
+  if (age < 0 || age > MAX_STREAK_FREEZE_DAYS) return undefined;
   const reminderDate = age === 0 ? addDateKeyDays(today, 1) : today;
   return localTimeAt(reminderDate, PUSH_REMINDER_HOUR, timezone, PUSH_REMINDER_MINUTE);
 }
@@ -106,7 +109,7 @@ export function nextStreakReminderAt(
   const today = localDateKey(now, timezone);
   const practiceDate = localDateKey(lastPracticeAt, timezone);
   const age = dateKeyDifference(today, practiceDate);
-  if (age < 0 || age > 1) return undefined;
+  if (age < 0 || age > MAX_STREAK_FREEZE_DAYS) return undefined;
   const reminderDate = age === 0 ? addDateKeyDays(today, 1) : today;
   return localTimeAt(reminderDate, REMINDER_HOUR, timezone);
 }
@@ -122,7 +125,66 @@ export function effectiveStreakDays(
     localDateKey(now, timezone),
     localDateKey(lastPracticeAt, timezone),
   );
-  return age >= 0 && age <= 1 ? currentDays : 0;
+  return age >= 0 && age <= MAX_STREAK_FREEZE_DAYS ? currentDays : 0;
+}
+
+export function streakFreezeState(
+  currentDays: number,
+  lastQualifiedDate: string | undefined,
+  today: string,
+) {
+  if (currentDays <= 0 || !lastQualifiedDate) {
+    return {
+      currentDays: 0,
+      frozenDaysUsed: 0,
+      freezeStartedDate: undefined,
+      freezeDay: undefined,
+      expired: false,
+    };
+  }
+
+  const age = dateKeyDifference(today, lastQualifiedDate);
+  if (age <= 0) {
+    return {
+      currentDays,
+      frozenDaysUsed: 0,
+      freezeStartedDate: undefined,
+      freezeDay: undefined,
+      expired: false,
+    };
+  }
+
+  const freezeStartedDate = addDateKeyDays(lastQualifiedDate, 1);
+  if (age <= MAX_STREAK_FREEZE_DAYS) {
+    return {
+      currentDays,
+      frozenDaysUsed: age,
+      freezeStartedDate,
+      freezeDay: age as StreakFreezeDay,
+      expired: false,
+    };
+  }
+
+  return {
+    currentDays: 0,
+    frozenDaysUsed: MAX_STREAK_FREEZE_DAYS,
+    freezeStartedDate,
+    freezeDay: undefined,
+    expired: true,
+  };
+}
+
+export function streakDaysAfterPractice(
+  currentDays: number,
+  lastQualifiedDate: string | undefined,
+  practiceDate: string,
+) {
+  if (!lastQualifiedDate || currentDays <= 0) return 1;
+  const difference = dateKeyDifference(practiceDate, lastQualifiedDate);
+  if (difference === 0) return currentDays;
+  return difference > 0 && difference <= MAX_STREAK_FREEZE_DAYS
+    ? currentDays + 1
+    : 1;
 }
 
 export function currentStreakLength(dateKeys: string[], today: string) {
@@ -130,14 +192,14 @@ export function currentStreakLength(dateKeys: string[], today: string) {
   if (!uniqueDates.length) return 0;
   const last = uniqueDates.at(-1)!;
   const age = dateKeyDifference(today, last);
-  if (age < 0 || age > 1) return 0;
+  if (age < 0 || age > MAX_STREAK_FREEZE_DAYS) return 0;
 
-  const dates = new Set(uniqueDates);
-  let cursor = last;
-  let count = 0;
-  while (dates.has(cursor)) {
+  let count = 1;
+  for (let index = uniqueDates.length - 1; index > 0; index -= 1) {
+    if (dateKeyDifference(uniqueDates[index], uniqueDates[index - 1]) > MAX_STREAK_FREEZE_DAYS) {
+      break;
+    }
     count += 1;
-    cursor = addDateKeyDays(cursor, -1);
   }
   return count;
 }
@@ -148,7 +210,12 @@ export function longestStreakLength(dateKeys: string[]) {
   let current = 0;
   let previous: string | undefined;
   for (const dateKey of uniqueDates) {
-    current = previous && dateKeyDifference(dateKey, previous) === 1 ? current + 1 : 1;
+    const difference = previous ? dateKeyDifference(dateKey, previous) : undefined;
+    current = difference !== undefined
+      && difference > 0
+      && difference <= MAX_STREAK_FREEZE_DAYS
+      ? current + 1
+      : 1;
     longest = Math.max(longest, current);
     previous = dateKey;
   }

@@ -6,15 +6,18 @@ import { internalMutation, internalQuery } from './_generated/server';
 import type { MutationCtx } from './_generated/server';
 import {
   addDateKeyDays,
-  effectiveStreakDays,
   isValidTimezone,
   localDateKey,
   localTimeAt,
   nextStreakReminderAt,
   nextStreakPushReminderAt,
+  streakFreezeState,
 } from './streakReminderTime';
-import { streakReminderEligibility } from './streakReminderRules';
-import { nextStreakReminderVariant } from './streakReminderContent';
+import {
+  hasStreakReminderTarget,
+  sentStreakReminderOnLocalDate,
+  streakReminderEligibility,
+} from './streakReminderRules';
 
 const BATCH_SIZE = 100;
 const RETRY_DELAY_MS = 30 * 60 * 1000;
@@ -35,15 +38,14 @@ const sendPushReminderRef = makeFunctionReference<
   { userId: Id<'users'>; localDate: string },
   null
 >('notifications:sendStreakReminderPush');
+const advanceStreakFreezeRef = makeFunctionReference<
+  'mutation',
+  { userId: Id<'users'>; lastQualifiedDate: string },
+  null
+>('streakReminders:advanceStreakFreeze');
 
 function remindersEnabled(user: Doc<'users'>) {
   return user.onboarding?.reminderPreference === 'enabled';
-}
-
-function sentOnDate(sentAt: number | undefined, user: Doc<'users'>, dateKey: string) {
-  return sentAt !== undefined
-    && user.timezone !== undefined
-    && localDateKey(sentAt, user.timezone) === dateKey;
 }
 
 function reminderEligibility(
@@ -56,21 +58,30 @@ function reminderEligibility(
     timezone: user.timezone,
     reminderPreference: user.onboarding?.reminderPreference,
     lastPracticeAt: user.lastPracticeAt,
+    lastQualifiedDate: streak.lastQualifiedDate,
     currentStreakDays: streak.currentDays,
   }, now);
 }
 
 function emailEligibility(user: Doc<'users'>, streak: Doc<'streaks'> | null, now: number) {
   const context = reminderEligibility(user, streak, now);
-  if (!context || !user.email?.trim() || sentOnDate(user.lastStreakEmailAt, user, context.localDate)) {
+  const email = user.email?.trim();
+  if (
+    !context
+    || !email
+    || sentStreakReminderOnLocalDate(user.lastStreakEmailAt, user.timezone, context.localDate)
+  ) {
     return null;
   }
-  return { ...context, email: user.email.trim(), variantIndex: Math.abs(user.streakEmailVariantIndex ?? 0) % 3 };
+  return { ...context, email };
 }
 
 function pushEligibility(user: Doc<'users'>, streak: Doc<'streaks'> | null, now: number) {
   const context = reminderEligibility(user, streak, now);
-  return context && !sentOnDate(user.lastStreakPushAt, user, context.localDate) ? context : null;
+  return context
+    && !sentStreakReminderOnLocalDate(user.lastStreakPushAt, user.timezone, context.localDate)
+    ? context
+    : null;
 }
 
 async function reconcileSchedule(
@@ -80,8 +91,7 @@ async function reconcileSchedule(
   now: number,
 ) {
   if (
-    !remindersEnabled(user)
-    || !user.timezone
+    !user.timezone
     || !isValidTimezone(user.timezone)
     || user.lastPracticeAt === undefined
     || !streak
@@ -90,30 +100,45 @@ async function reconcileSchedule(
     return;
   }
 
-  const currentDays = effectiveStreakDays(
+  const today = localDateKey(now, user.timezone);
+  const lastQualifiedDate = streak.lastQualifiedDate
+    ?? localDateKey(user.lastPracticeAt, user.timezone);
+  const freezeState = streakFreezeState(
     streak.currentDays,
-    user.lastPracticeAt,
-    user.timezone,
-    now,
+    lastQualifiedDate,
+    today,
   );
-  if (currentDays === 0) {
-    if (streak.currentDays !== 0) {
-      await ctx.db.patch(streak._id, { currentDays: 0, updatedAt: now });
-    }
+  if (
+    streak.currentDays !== freezeState.currentDays
+    || (streak.frozenDaysUsed ?? 0) !== freezeState.frozenDaysUsed
+    || streak.freezeStartedDate !== freezeState.freezeStartedDate
+  ) {
+    await ctx.db.patch(streak._id, {
+      currentDays: freezeState.currentDays,
+      frozenDaysUsed: freezeState.frozenDaysUsed,
+      freezeStartedDate: freezeState.freezeStartedDate,
+      updatedAt: now,
+    });
+  }
+
+  if (freezeState.currentDays === 0 || !remindersEnabled(user)) {
     await ctx.db.patch(user._id, { nextStreakEmailAt: undefined, nextStreakPushAt: undefined });
     return;
   }
 
-  const today = localDateKey(now, user.timezone);
-  const nextStreakEmailAt = sentOnDate(user.lastStreakEmailAt, user, today)
+  const pushDevices = await ctx.db.query('devices')
+    .withIndex('by_user_push_enabled', (q) => q.eq('userId', user._id).eq('pushEnabled', true))
+    .collect();
+  const hasPushToken = pushDevices.some((device) => hasStreakReminderTarget(device.expoPushToken));
+  const nextStreakEmailAt = sentStreakReminderOnLocalDate(user.lastStreakEmailAt, user.timezone, today)
     ? localTimeAt(addDateKeyDays(today, 1), 19, user.timezone)
     : nextStreakReminderAt(user.lastPracticeAt, user.timezone, now);
-  const nextStreakPushAt = sentOnDate(user.lastStreakPushAt, user, today)
+  const nextStreakPushAt = sentStreakReminderOnLocalDate(user.lastStreakPushAt, user.timezone, today)
     ? localTimeAt(addDateKeyDays(today, 1), 20, user.timezone)
     : nextStreakPushReminderAt(user.lastPracticeAt, user.timezone, now);
   await ctx.db.patch(user._id, {
     nextStreakEmailAt: user.email?.trim() ? nextStreakEmailAt : undefined,
-    nextStreakPushAt,
+    nextStreakPushAt: hasPushToken ? nextStreakPushAt : undefined,
   });
 }
 
@@ -207,12 +232,14 @@ export const getStreakReminderPushContext = internalQuery({
     const devices = await ctx.db.query('devices')
       .withIndex('by_user_push_enabled', (q) => q.eq('userId', args.userId).eq('pushEnabled', true))
       .collect();
+    const activeDevices = devices.flatMap((device) => device.expoPushToken ? [{
+      deviceId: device._id,
+      expoPushToken: device.expoPushToken,
+    }] : []);
+    if (activeDevices.length === 0) return null;
     return {
       ...context,
-      devices: devices.flatMap((device) => device.expoPushToken ? [{
-        deviceId: device._id,
-        expoPushToken: device.expoPushToken,
-      }] : []),
+      devices: activeDevices,
     };
   },
 });
@@ -231,12 +258,49 @@ export const reconcileStreakReminder = internalMutation({
   },
 });
 
+export const advanceStreakFreeze = internalMutation({
+  args: { userId: v.id('users'), lastQualifiedDate: v.string() },
+  handler: async (ctx, args): Promise<null> => {
+    const [user, streak] = await Promise.all([
+      ctx.db.get(args.userId),
+      ctx.db.query('streaks')
+        .withIndex('by_user', (q) => q.eq('userId', args.userId))
+        .unique(),
+    ]);
+    if (
+      !user
+      || !streak
+      || streak.lastQualifiedDate !== args.lastQualifiedDate
+      || !user.timezone
+      || !isValidTimezone(user.timezone)
+    ) return null;
+
+    const now = Date.now();
+    const today = localDateKey(now, user.timezone);
+    const freezeState = streakFreezeState(streak.currentDays, args.lastQualifiedDate, today);
+    await ctx.db.patch(streak._id, {
+      currentDays: freezeState.currentDays,
+      frozenDaysUsed: freezeState.frozenDaysUsed,
+      freezeStartedDate: freezeState.freezeStartedDate,
+      updatedAt: now,
+    });
+
+    if (!freezeState.expired && freezeState.currentDays > 0) {
+      await ctx.scheduler.runAt(
+        localTimeAt(addDateKeyDays(today, 1), 0, user.timezone),
+        advanceStreakFreezeRef,
+        args,
+      );
+    }
+    return null;
+  },
+});
+
 export const finalizeStreakReminder = internalMutation({
   args: {
     userId: v.id('users'),
     localDate: v.string(),
     sentAt: v.number(),
-    variantIndex: v.number(),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
@@ -246,8 +310,27 @@ export const finalizeStreakReminder = internalMutation({
     await ctx.db.patch(args.userId, {
       lastStreakEmailAt: args.sentAt,
       nextStreakEmailAt: localTimeAt(addDateKeyDays(args.localDate, 1), 19, user.timezone),
-      streakEmailVariantIndex: nextStreakReminderVariant(args.variantIndex),
     });
+    const streak = await ctx.db.query('streaks')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .unique();
+    if (streak) {
+      const freezeState = streakFreezeState(
+        streak.currentDays,
+        streak.lastQualifiedDate
+          ?? (user.lastPracticeAt === undefined
+            ? undefined
+            : localDateKey(user.lastPracticeAt, user.timezone)),
+        args.localDate,
+      );
+      await ctx.db.patch(streak._id, {
+        currentDays: freezeState.currentDays,
+        frozenDaysUsed: freezeState.frozenDaysUsed,
+        freezeStartedDate: freezeState.freezeStartedDate,
+        lastFreezeReminderDate: args.localDate,
+        updatedAt: args.sentAt,
+      });
+    }
     return null;
   },
 });
@@ -283,6 +366,26 @@ export const finalizeStreakPushReminder = internalMutation({
       lastStreakPushAt: args.sentAt,
       nextStreakPushAt: localTimeAt(addDateKeyDays(args.localDate, 1), 20, user.timezone),
     });
+    const streak = await ctx.db.query('streaks')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .unique();
+    if (streak) {
+      const freezeState = streakFreezeState(
+        streak.currentDays,
+        streak.lastQualifiedDate
+          ?? (user.lastPracticeAt === undefined
+            ? undefined
+            : localDateKey(user.lastPracticeAt, user.timezone)),
+        args.localDate,
+      );
+      await ctx.db.patch(streak._id, {
+        currentDays: freezeState.currentDays,
+        frozenDaysUsed: freezeState.frozenDaysUsed,
+        freezeStartedDate: freezeState.freezeStartedDate,
+        lastFreezeReminderDate: args.localDate,
+        updatedAt: args.sentAt,
+      });
+    }
     return null;
   },
 });

@@ -220,3 +220,89 @@ export const replaceBeginnerCounterChallenge = mutation({
     return { exerciseKey: exercise.key, version: question.version };
   },
 });
+
+/**
+ * One-time content migration that makes the About link challenge accessible
+ * without requiring learners to type JSX on a mobile keyboard.
+ */
+export const replaceBeginnerAboutLinkChallenge = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const exercise = await ctx.db
+      .query('exercises')
+      .withIndex('by_key', (q) => q.eq('key', 'beginner-c5-l3-mini-001'))
+      .unique();
+    if (!exercise) throw new ConvexError({ code: 'EXERCISE_NOT_FOUND' });
+
+    const lesson = await ctx.db.get(exercise.lessonId);
+    if (lesson?.key !== 'beginner-course-5-lesson-3') {
+      throw new ConvexError({ code: 'UNEXPECTED_LESSON' });
+    }
+
+    const solution = await ctx.db
+      .query('exerciseSolutions')
+      .withIndex('by_exercise', (q) => q.eq('exerciseId', exercise._id))
+      .unique();
+    if (!solution) throw new ConvexError({ code: 'SOLUTION_NOT_FOUND' });
+
+    const question = {
+      id: 'beginner-c5-l3-mini-001',
+      type: 'multiple_choice' as const,
+      title: 'Add an About link',
+      prompt: 'Which JSX adds a visible link from the home page to /about?',
+      instruction: 'Select the answer that correctly links to /about.',
+      difficulty: 'beginner' as const,
+      topic: 'Link navigation',
+      tags: ['expo-router', 'link', 'navigation'],
+      xp: exercise.xp,
+      estimatedSeconds: 30,
+      hints: [{
+        id: 'hint-1',
+        text: 'Use Link from expo-router. Its href is the route and its child text is the visible label.',
+      }],
+      explanation: {
+        summary: 'Use Link with href="/about" and visible About text.',
+        details: 'The app already has src/app/about.tsx, so <Link href="/about">About</Link> creates a visible route link from the home screen.',
+        documentationUrl: 'https://docs.expo.dev/router/basics/navigation/',
+      },
+      status: 'published' as const,
+      version: 2,
+      language: 'tsx' as const,
+      codeSnippet: `import { Link } from 'expo-router';
+
+export default function Home() {
+  return (
+    <View>
+      <Text>Home</Text>
+      {/* Add the About link here */}
+    </View>
+  );
+}`,
+      options: [
+        { id: 'about-link', text: 'Use Link with an href and label', code: '<Link href="/about">About</Link>' },
+        { id: 'text-href', text: 'Use Text with an href', code: '<Text href="/about">About</Text>' },
+        { id: 'link-to', text: 'Use Link with a to prop', code: '<Link to="/about">About</Link>' },
+        { id: 'missing-label', text: 'Use Link without visible text', code: '<Link href="/about" />' },
+      ],
+    };
+    const timestamp = Date.now();
+
+    await ctx.db.patch(exercise._id, {
+      type: 'multiple_choice',
+      title: question.title,
+      prompt: question.prompt,
+      instruction: question.instruction,
+      publicDataJson: JSON.stringify(question),
+      explanationJson: JSON.stringify(question.explanation),
+      version: question.version,
+      updatedAt: timestamp,
+    });
+    await ctx.db.patch(solution._id, {
+      solutionDataJson: JSON.stringify({ ...question, correctOptionId: 'about-link' }),
+      updatedAt: timestamp,
+    });
+
+    return { exerciseKey: exercise.key, version: question.version };
+  },
+});

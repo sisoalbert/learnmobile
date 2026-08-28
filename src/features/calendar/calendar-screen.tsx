@@ -40,7 +40,34 @@ export default function CalendarScreen() {
     ...latestActivityDateKeys.filter((dateKey) => dateKey.startsWith(monthKey)),
     ...recentPracticeDateKeys.filter((dateKey) => dateKey.startsWith(monthKey)),
   ])];
-  const weeks = buildUtcMonthWeeks(monthKey, completedDateKeys);
+  const streakDays = learning.streakDays ?? 0;
+  const pastCompletedDateKeys = completedDateKeys.filter((k) => k <= todayKey).sort();
+  const C = pastCompletedDateKeys.length;
+  const N = streakDays;
+  
+  const frozenDateKeys: string[] = [];
+  if (N > 0) {
+    const streakStartDate = N <= C ? pastCompletedDateKeys[C - N] : '';
+    const firstDayOfMonth = `${monthKey}-01`;
+    const startLoopDate = streakStartDate < firstDayOfMonth ? firstDayOfMonth : streakStartDate;
+    
+    const yesterday = new Date(`${todayKey}T00:00:00Z`);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayKey = yesterday.toISOString().slice(0, 10);
+    
+    let currentDate = new Date(`${startLoopDate}T00:00:00Z`);
+    const end = new Date(`${yesterdayKey}T00:00:00Z`);
+    
+    while (currentDate <= end) {
+      const dKey = currentDate.toISOString().slice(0, 10);
+      if (!completedDateKeys.includes(dKey)) {
+        frozenDateKeys.push(dKey);
+      }
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    }
+  }
+
+  const weeks = buildUtcMonthWeeks(monthKey, completedDateKeys, frozenDateKeys);
   const monthTitle = new Date(`${monthKey}-01T00:00:00Z`).toLocaleDateString(undefined, {
     month: 'long',
     timeZone: 'UTC',
