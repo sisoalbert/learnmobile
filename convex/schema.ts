@@ -292,7 +292,14 @@ export default defineSchema({
     ),
     periodEndsAt: v.optional(v.number()),
     updatedAt: v.number(),
-  }).index('by_user', ['userId']),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_and_provider', ['userId', 'provider']),
+  revenueCatWebhookEvents: defineTable({
+    appUserId: v.string(),
+    eventId: v.string(),
+    receivedAt: v.number(),
+  }).index('by_event_id', ['eventId']),
   leaderboards: defineTable({
     key: v.string(),
     courseId: v.optional(v.id('courses')),

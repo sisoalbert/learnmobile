@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatLessonDuration, useLessonResultsStore } from '@/state/lesson-results-store';
 import { useLearningGoalStore } from '@/state/learning-goal-store';
 import { useOnboardingStore } from '@/state/onboarding-store';
-import { useSessionStore } from '@/state/sessionStore';
+import { useProAccess } from '@/services/revenuecat';
 import { feedback } from '@/services/feedback';
 import { isFirstLesson } from './lesson-constants';
 
@@ -21,7 +21,7 @@ export default function LessonResultsScreen() {
   const onboardingCompleted = useOnboardingStore((state) => state.isCompleted);
   const goalHydrated = useLearningGoalStore((state) => state.hasHydrated);
   const goalCommitted = useLearningGoalStore((state) => state.isCommitted);
-  const plan = useSessionStore((state) => state.user?.plan ?? 'free');
+  const hasPro = useProAccess();
   const hasPlayedCompletionFeedback = useRef(false);
 
   useEffect(() => {
@@ -43,11 +43,11 @@ export default function LessonResultsScreen() {
       router.replace('/learning-goal' as never);
       return;
     }
-    if (process.env.EXPO_OS !== 'web' && plan !== 'premium' && isFirstLesson(summary.lessonId)) {
+    if (process.env.EXPO_OS !== 'web' && !hasPro && isFirstLesson(summary.lessonId)) {
       router.replace('/lessons/premium' as never);
       return;
     }
-    router.replace((plan === 'premium' ? '/lessons/streak-increase' : '/lessons/ad') as never);
+    router.replace((hasPro ? '/lessons/streak-increase' : '/lessons/ad') as never);
   };
 
   const results = [

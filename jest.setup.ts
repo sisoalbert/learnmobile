@@ -112,3 +112,42 @@ jest.mock('react-native-keyboard-controller', () => {
     useKeyboardHandler: jest.fn(),
   };
 });
+
+// Native RevenueCat modules include ESM/browser implementation code that Jest does
+// not load in this Expo preset. Screens consume the provider context in tests, so
+// use lightweight native shims and let feature-specific tests replace them as needed.
+jest.mock('@sentry/react-native', () => ({
+  captureException: jest.fn(),
+  feedbackIntegration: jest.fn(),
+  init: jest.fn(),
+  mobileReplayIntegration: jest.fn(),
+  wrap: <T,>(component: T) => component,
+}));
+
+jest.mock('react-native-purchases', () => ({
+  __esModule: true,
+  default: {
+    addCustomerInfoUpdateListener: jest.fn(),
+    configure: jest.fn(),
+    getCustomerInfo: jest.fn(),
+    isConfigured: jest.fn(() => Promise.resolve(false)),
+    logIn: jest.fn(),
+    removeCustomerInfoUpdateListener: jest.fn(),
+    restorePurchases: jest.fn(),
+  },
+}));
+
+jest.mock('react-native-purchases-ui', () => ({
+  __esModule: true,
+  default: {
+    presentCustomerCenter: jest.fn(),
+    presentPaywallIfNeeded: jest.fn(),
+  },
+  PAYWALL_RESULT: {
+    CANCELLED: 'CANCELLED',
+    ERROR: 'ERROR',
+    NOT_PRESENTED: 'NOT_PRESENTED',
+    PURCHASED: 'PURCHASED',
+    RESTORED: 'RESTORED',
+  },
+}));

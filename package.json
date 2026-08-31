@@ -40,6 +40,8 @@
     "react-native-gesture-handler": "~2.32.0",
     "react-native-google-mobile-ads": "16.3.3",
     "react-native-keyboard-controller": "1.21.9",
+    "react-native-purchases": "^10.8.1",
+    "react-native-purchases-ui": "^10.8.1",
     "react-native-reanimated": "4.5.0",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
@@ -88,6 +90,7 @@
     "bandroidl": "eas build --platform android --local",
     "clean": "npx expo prebuild --clean",
     "cleana": "npx expo prebuild --clean -p android",
+    "cleani": "npx expo prebuild --clean -p ios",
     "lint": "expo lint",
     "test": "jest --runInBand --no-watchman",
     "icons:android": "node ./scripts/generate-android-icons.mjs"

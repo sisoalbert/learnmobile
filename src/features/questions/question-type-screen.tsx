@@ -29,7 +29,7 @@ import type {
 } from './questions.types';
 import { feedback } from '@/services/feedback';
 import { AdMobBanner, useInLessonAdsEnabled } from '@/services/ads';
-import { useSessionStore } from '@/state/sessionStore';
+import { useProAccess } from '@/services/revenuecat';
 
 export type QuestionTypeScreenProps = {
   question: Question;
@@ -70,7 +70,7 @@ function QuestionTypeScreenContent({
   const [initializationAttempt, setInitializationAttempt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState('');
-  const plan = useSessionStore((state) => state.user?.plan ?? 'free');
+  const hasPro = useProAccess();
   const inLessonAdsEnabled = useInLessonAdsEnabled();
   const shouldShowBanner = process.env.EXPO_OS === 'web'
     || (showInLessonAd && inLessonAdsEnabled === true);
@@ -211,7 +211,7 @@ function QuestionTypeScreenContent({
           <View style={styles.bottomSpacer} />
         </ScrollView>
 
-        {plan !== 'premium' && shouldShowBanner ? <AdMobBanner key={question.id} /> : null}
+        {!hasPro && shouldShowBanner ? <AdMobBanner key={question.id} /> : null}
 
         <View style={styles.footer}>
           {result ? (

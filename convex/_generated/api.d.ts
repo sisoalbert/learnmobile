@@ -23,6 +23,8 @@ import type * as mobileAdFlags from "../mobileAdFlags.js";
 import type * as notifications from "../notifications.js";
 import type * as onboarding from "../onboarding.js";
 import type * as passwordReset from "../passwordReset.js";
+import type * as revenueCat from "../revenueCat.js";
+import type * as revenueCatWebhook from "../revenueCatWebhook.js";
 import type * as roles from "../roles.js";
 import type * as streakReminderContent from "../streakReminderContent.js";
 import type * as streakReminderEmail from "../streakReminderEmail.js";
@@ -55,6 +57,8 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   onboarding: typeof onboarding;
   passwordReset: typeof passwordReset;
+  revenueCat: typeof revenueCat;
+  revenueCatWebhook: typeof revenueCatWebhook;
   roles: typeof roles;
   streakReminderContent: typeof streakReminderContent;
   streakReminderEmail: typeof streakReminderEmail;

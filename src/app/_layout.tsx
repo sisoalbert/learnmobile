@@ -29,6 +29,7 @@ import { useUserProfileStore } from '@/state/user-profile-store';
 import { api } from '../../convex/_generated/api';
 import * as Sentry from '@sentry/react-native';
 import { AndroidSystemBar } from '@/common/android-system-bar';
+import { RevenueCatProvider } from '@/services/revenuecat';
 
 Sentry.init({
   dsn: 'https://35679436932e413d622d5a9e0b873249@o4511830907355136.ingest.us.sentry.io/4511830910697474',
@@ -134,9 +135,14 @@ function AuthenticatedAppNavigator() {
   }, [clearLocalSession, convexAuthenticated, currentUser, hydrateCommittedGoal, hydrateProfile, isLoading, markOnboardingCompleted, markOnboardingIncomplete, setAuthenticatedUser]);
 
   return (
-    <GuestSessionGate authenticated={convexAuthenticated} loading={isLoading}>
-      <AppNavigator mobileAdsFlags={mobileAdsFlags} startupRouteState={startupRouteState} />
-    </GuestSessionGate>
+    <RevenueCatProvider
+      appUserId={currentUser ? String(currentUser.id) : undefined}
+      serverHasPro={currentUser?.plan === 'premium'}
+    >
+      <GuestSessionGate authenticated={convexAuthenticated} loading={isLoading}>
+        <AppNavigator mobileAdsFlags={mobileAdsFlags} startupRouteState={startupRouteState} />
+      </GuestSessionGate>
+    </RevenueCatProvider>
   );
 }
 

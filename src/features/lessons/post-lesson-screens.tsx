@@ -16,7 +16,7 @@ import { feedback } from '@/services/feedback';
 import { showInterstitialAd, useEndOfLessonAdsEnabled } from '@/services/ads';
 import { WebInterstitialCard } from '@/services/ads/web-ad-components';
 import WelcomeAnimation from '@/common/WelcomeAnimation';
-import { useSessionStore } from '@/state/sessionStore';
+import { useProAccess } from '@/services/revenuecat';
 import { api } from '../../../convex/_generated/api';
 import { buildUtcWeekDays } from './utc-week';
 import { isFirstLesson } from './lesson-constants';
@@ -120,7 +120,7 @@ function PostLessonShell({
 export function PostLessonAdScreen() {
   const router = useRouter();
   const summary = usePostLessonSummary();
-  const plan = useSessionStore((state) => state.user?.plan ?? 'free');
+  const hasPro = useProAccess();
   const endOfLessonAdsEnabled = useEndOfLessonAdsEnabled();
   const hasStartedInterstitial = useRef(false);
   const isWeb = process.env.EXPO_OS === 'web';
@@ -128,7 +128,7 @@ export function PostLessonAdScreen() {
   useEffect(() => {
     if (!summary || hasStartedInterstitial.current) return;
 
-    if (plan === 'premium') {
+    if (hasPro) {
       hasStartedInterstitial.current = true;
       router.replace('/lessons/streak-increase');
       return;
@@ -152,7 +152,7 @@ export function PostLessonAdScreen() {
     void showInterstitialAd().catch(() => undefined).finally(() => {
       router.replace('/lessons/premium');
     });
-  }, [endOfLessonAdsEnabled, isWeb, plan, router, summary]);
+  }, [endOfLessonAdsEnabled, hasPro, isWeb, router, summary]);
 
   if (!summary) return null;
 
@@ -173,7 +173,7 @@ export function PostLessonAdScreen() {
   }
 
   if (isFirstLesson(summary.lessonId)) return null;
-  if (plan !== 'premium' && endOfLessonAdsEnabled !== true) return null;
+  if (!hasPro && endOfLessonAdsEnabled !== true) return null;
 
   return (
     <PostLessonShell

@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/common';
 import { feedback } from '@/services/feedback';
 import { disableStoredDevice } from '@/services/notifications/push-notification-manager';
+import { isNativeRevenueCatPlatform, useRevenueCat } from '@/services/revenuecat';
 import { clearAllZustandStores } from '@/state/clear-all-zustand-stores';
 import { useLearnerSessionStore } from '@/state/learner-session-store';
 import { useSessionStore } from '@/state/sessionStore';
@@ -34,6 +35,7 @@ export default function ProfileScreen({
   const learner = useLearnerSessionStore((state) => state.session);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isManagingSubscription, setIsManagingSubscription] = useState(false);
   const currentUser = useQuery(api.users.current, isAuthenticated ? {} : 'skip');
   const authenticatedProgress = useQuery(
     api.learning.getAuthenticatedProgress,
@@ -56,6 +58,8 @@ export default function ProfileScreen({
     currentUser?.email ?? user?.email ?? currentUser?.name ?? user?.name ?? 'Signed in';
   const username = currentUser?.username ?? user?.username;
   const plan = currentUser?.plan ?? user?.plan ?? 'free';
+  const { hasPro, presentCustomerCenter, status: revenueCatStatus } = useRevenueCat();
+  const isPro = hasPro || plan === 'premium';
   const fullName = [currentUser?.firstName ?? user?.firstName, currentUser?.lastName ?? user?.lastName]
     .filter(Boolean)
     .join(' ')
@@ -204,6 +208,18 @@ export default function ProfileScreen({
     );
   };
 
+  const handleManageSubscription = async () => {
+    if (isManagingSubscription) return;
+
+    feedback.play('buttonTap');
+    setIsManagingSubscription(true);
+    const opened = await presentCustomerCenter();
+    setIsManagingSubscription(false);
+    if (!opened) {
+      Alert.alert('Subscription management unavailable', 'Please try again in a moment.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header showBack={!showSettings} showSettings={showSettings} />
@@ -235,9 +251,9 @@ export default function ProfileScreen({
               ) : null}
             </View>
             {isAuthenticated ? (
-              <View style={[styles.planBadge, plan === 'premium' && styles.premiumBadge]}>
-                <Lucide name={plan === 'premium' ? 'crown' : 'sparkles'} size={14} color={plan === 'premium' ? '#A66200' : '#356EBD'} />
-                <Text selectable style={[styles.planText, plan === 'premium' && styles.premiumText]}>{plan} plan</Text>
+              <View style={[styles.planBadge, isPro && styles.premiumBadge]}>
+                <Lucide name={isPro ? 'crown' : 'sparkles'} size={14} color={isPro ? '#A66200' : '#356EBD'} />
+                <Text selectable style={[styles.planText, isPro && styles.premiumText]}>{isPro ? 'premium' : 'free'} plan</Text>
               </View>
             ) : (
               <Text selectable style={styles.guestMessage}>Sign in to keep your learning progress synced.</Text>
@@ -262,6 +278,24 @@ export default function ProfileScreen({
                   <Text selectable numberOfLines={1} style={styles.accountDescription}>{accountDescription}</Text>
                 </View>
                 <View style={styles.accountActions}>
+                  {isPro && isNativeRevenueCatPlatform ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Manage subscription"
+                      disabled={isManagingSubscription || revenueCatStatus !== 'ready'}
+                      hitSlop={8}
+                      style={({ pressed }) => [
+                        styles.secondaryButton,
+                        pressed && !isManagingSubscription && styles.actionButtonPressed,
+                        (isManagingSubscription || revenueCatStatus !== 'ready') && styles.actionButtonDisabled,
+                      ]}
+                      onPress={() => void handleManageSubscription()}
+                    >
+                      <Text style={styles.secondaryButtonText}>
+                        {isManagingSubscription ? 'Opening…' : 'Manage subscription'}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Sign out"

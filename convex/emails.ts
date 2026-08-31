@@ -51,6 +51,55 @@ export const sendWelcomeEmail = internalAction({
   },
 });
 
+export const sendSubscriptionWelcomeEmail = internalAction({
+  args: {
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    userId: v.id('users'),
+  },
+  handler: async (_ctx, { email, firstName, userId }): Promise<{ id: string }> => {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) throw new Error('RESEND_API_KEY is not configured');
+
+    const resend = new Resend(apiKey);
+    const recipient = process.env.RESEND_TEST_RECIPIENT ?? email;
+    const from = process.env.PREMIUM_EMAIL_FROM
+      ?? process.env.WELCOME_EMAIL_FROM
+      ?? 'Learn Expo <onboarding@updates.learnexpo.online>';
+    const learnerName = escapeHtml(firstName?.trim() || 'there');
+    const learningUrl = 'https://learnexpo.online/home';
+    const { data, error } = await resend.emails.send({
+      from,
+      to: recipient,
+      subject: 'Welcome to Learn Expo Pro! 🦖',
+      html: `
+        <div style="background:#f8fafd;padding:32px 16px;font-family:Arial,sans-serif;color:#17213b;">
+          <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;padding:32px;box-shadow:0 8px 24px rgba(23,33,59,.08);">
+            <div style="font-size:42px;line-height:1;text-align:center;">🦖</div>
+            <h1 style="margin:18px 0 12px;text-align:center;font-size:28px;line-height:1.2;color:#8757d8;">You’re now Learn Expo Pro!</h1>
+            <p style="font-size:17px;line-height:1.6;color:#4b5565;">Hi ${learnerName}, your Pro access is active. Learn without ads, practice without limits, and make the most of every lesson.</p>
+            <div style="text-align:center;"><a href="${learningUrl}" style="display:inline-block;background:#2289fd;color:#ffffff;text-decoration:none;font-weight:900;padding:15px 24px;border-radius:14px;">Continue learning</a></div>
+          </div>
+        </div>
+      `,
+      text: [
+        'Welcome to Learn Expo Pro!',
+        '',
+        `Hi ${firstName?.trim() || 'there'}, your Pro access is active.`,
+        'Learn without ads, practice without limits, and make the most of every lesson.',
+        '',
+        `Continue learning: ${learningUrl}`,
+      ].join('\n'),
+      tags: [{ name: 'email_type', value: 'subscription_welcome' }],
+    }, {
+      idempotencyKey: `subscription-welcome:${userId}`,
+    });
+
+    if (error || !data) throw new Error(error?.message ?? 'Resend did not return an email ID');
+    return { id: data.id };
+  },
+});
+
 function escapeHtml(value: string) {
   return value
     .replaceAll('&', '&amp;')

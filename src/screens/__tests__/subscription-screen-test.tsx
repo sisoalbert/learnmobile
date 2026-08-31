@@ -1,56 +1,137 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import SubscriptionScreen from '../SubscriptionScreen';
 
 const mockBack = jest.fn();
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
+const mockPresentPaywall = jest.fn();
+const mockRestorePurchases = jest.fn();
+const mockPresentCustomerCenter = jest.fn();
+const mockRevenueCat = {
+  errorMessage: null as string | null,
+  hasPro: false,
+  presentCustomerCenter: mockPresentCustomerCenter,
+  presentPaywall: mockPresentPaywall,
+  restorePurchases: mockRestorePurchases,
+  status: 'ready' as const,
+};
+let mockIsAuthenticated = true;
+let mockIsNative = true;
+
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     back: mockBack,
+    canGoBack: () => true,
+    push: mockPush,
+    replace: mockReplace,
   }),
 }));
 
-jest.mock('@/services/feedback', () => ({
-  feedback: {
-    play: jest.fn(),
+jest.mock('react-native-purchases-ui', () => ({
+  PAYWALL_RESULT: {
+    CANCELLED: 'CANCELLED',
+    ERROR: 'ERROR',
+    NOT_PRESENTED: 'NOT_PRESENTED',
+    PURCHASED: 'PURCHASED',
+    RESTORED: 'RESTORED',
   },
+}));
+
+jest.mock('@/services/feedback', () => ({
+  feedback: { play: jest.fn() },
+}));
+
+jest.mock('@/services/revenuecat', () => ({
+  get isNativeRevenueCatPlatform() {
+    return mockIsNative;
+  },
+  useRevenueCat: () => mockRevenueCat,
+}));
+
+jest.mock('@/state/sessionStore', () => ({
+  useSessionStore: (selector: (state: { isAuthenticated: boolean }) => boolean) => selector({
+    isAuthenticated: mockIsAuthenticated,
+  }),
 }));
 
 describe('SubscriptionScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsAuthenticated = true;
+    mockIsNative = true;
+    mockRevenueCat.hasPro = false;
+    mockRevenueCat.errorMessage = null;
+    mockRevenueCat.status = 'ready';
+    mockPresentPaywall.mockResolvedValue('CANCELLED');
+    mockRestorePurchases.mockResolvedValue(null);
+    mockPresentCustomerCenter.mockResolvedValue(true);
   });
 
-  it('renders correctly with title and benefits', () => {
+  it('renders the managed-paywall entry point and benefits', () => {
     const { getByText } = render(<SubscriptionScreen />);
 
-    expect(getByText('LEARN EXPO SUPER')).toBeTruthy();
+    expect(getByText('LEARN EXPO PRO')).toBeTruthy();
     expect(getByText('Unlock Your Full Potential')).toBeTruthy();
     expect(getByText('100% Ad-Free Experience')).toBeTruthy();
-    expect(getByText('Unlimited Hearts & Practice')).toBeTruthy();
+    expect(getByText('VIEW PRO PLANS')).toBeTruthy();
   });
 
-  it('allows selecting billing plans', () => {
-    const { getByText } = render(<SubscriptionScreen />);
+  it('presents the native RevenueCat paywall and handles a purchase', async () => {
+    mockPresentPaywall.mockResolvedValue('PURCHASED');
+    const { getByLabelText, getByText } = render(<SubscriptionScreen />);
 
-    const monthlyPlan = getByText('1 Month');
-    fireEvent.press(monthlyPlan);
+    fireEvent.press(getByLabelText('View Pro plans'));
 
-    expect(getByText('SUBSCRIBE NOW')).toBeTruthy();
-
-    const annualPlan = getByText('12 Months');
-    fireEvent.press(annualPlan);
-
-    expect(getByText('START 7-DAY FREE TRIAL')).toBeTruthy();
+    await waitFor(() => expect(mockPresentPaywall).toHaveBeenCalledTimes(1));
+    expect(getByText('Welcome to Learn Expo Pro!')).toBeTruthy();
   });
 
-  it('triggers router back when closing or subscribing', () => {
-    const { getByText, getByLabelText } = render(<SubscriptionScreen />);
+  it('restores purchases through RevenueCat', async () => {
+    mockRestorePurchases.mockResolvedValue({ entitlements: { active: {} } });
+    const { getByLabelText, getByText } = render(<SubscriptionScreen />);
 
-    fireEvent.press(getByText('START 7-DAY FREE TRIAL'));
-    expect(mockBack).toHaveBeenCalledTimes(1);
+    fireEvent.press(getByLabelText('Restore purchases'));
+
+    await waitFor(() => expect(mockRestorePurchases).toHaveBeenCalledTimes(1));
+    expect(getByText('Your purchase history has been refreshed.')).toBeTruthy();
+  });
+
+  it('blocks guest purchases and routes to sign in', () => {
+    mockIsAuthenticated = false;
+    const { getByLabelText } = render(<SubscriptionScreen />);
+
+    fireEvent.press(getByLabelText('View Pro plans'));
+
+    expect(mockPresentPaywall).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith('/signin');
+  });
+
+  it('does not invoke native purchases on web', () => {
+    mockIsNative = false;
+    const { getByLabelText, getByText } = render(<SubscriptionScreen />);
+
+    fireEvent.press(getByLabelText('View Pro plans'));
+
+    expect(mockPresentPaywall).not.toHaveBeenCalled();
+    expect(getByText('Subscriptions are currently available in the Learn Expo mobile app.')).toBeTruthy();
+  });
+
+  it('opens Customer Center for an entitled customer', async () => {
+    mockRevenueCat.hasPro = true;
+    const { getByLabelText } = render(<SubscriptionScreen />);
+
+    fireEvent.press(getByLabelText('Manage subscription'));
+
+    await waitFor(() => expect(mockPresentCustomerCenter).toHaveBeenCalledTimes(1));
+  });
+
+  it('closes using router navigation', () => {
+    const { getByLabelText } = render(<SubscriptionScreen />);
 
     fireEvent.press(getByLabelText('Close subscription screen'));
-    expect(mockBack).toHaveBeenCalledTimes(2);
+
+    expect(mockBack).toHaveBeenCalledTimes(1);
   });
 });
