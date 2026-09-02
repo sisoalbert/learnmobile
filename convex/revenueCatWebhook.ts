@@ -1,7 +1,7 @@
 import { httpAction } from './_generated/server';
 import { revenueCatSyncSubscriberRef } from './revenueCat';
 
-const ENTITLEMENT_IDENTIFIER = 'learn_expo_pro';
+const ENTITLEMENT_IDENTIFIER = 'Learn Expo Pro';
 const REVENUECAT_SUBSCRIBER_ENDPOINT = 'https://api.revenuecat.com/v1/subscribers/';
 const MAX_WEBHOOK_BODY_BYTES = 128 * 1024;
 const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;

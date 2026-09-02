@@ -44,7 +44,7 @@ function subscriberResponse(expiresDate: string | null) {
   return new Response(JSON.stringify({
     subscriber: {
       entitlements: expiresDate === null ? {} : {
-        learn_expo_pro: {
+        'Learn Expo Pro': {
           expires_date: expiresDate,
           product_identifier: 'monthly',
         },

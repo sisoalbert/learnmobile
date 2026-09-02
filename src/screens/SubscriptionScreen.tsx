@@ -13,7 +13,7 @@ import { useSessionStore } from '@/state/sessionStore';
 export default function SubscriptionScreen() {
   const router = useRouter();
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
-  const { errorMessage, hasPro, presentCustomerCenter, presentPaywall, restorePurchases, status } = useRevenueCat();
+  const { customerInfo, errorMessage, hasPro, presentCustomerCenter, presentPaywall, restorePurchases, status } = useRevenueCat();
   const [isOpeningPaywall, setIsOpeningPaywall] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isManagingSubscription, setIsManagingSubscription] = useState(false);
@@ -133,6 +133,16 @@ export default function SubscriptionScreen() {
               <Text style={styles.restoreButtonText}>{isRestoring ? 'RESTORING…' : 'RESTORE PURCHASES'}</Text>
             </Pressable>
           ) : null}
+          {__DEV__ && (
+            <View style={{ marginTop: 10, alignItems: 'center' }}>
+              <Text style={{ fontSize: 10, color: 'gray', textAlign: 'center' }}>
+                DEBUG - hasPro: {String(hasPro)} | status: {status}
+              </Text>
+              <Text style={{ fontSize: 10, color: 'gray', textAlign: 'center', marginTop: 2 }}>
+                Entitlements: {Object.keys(customerInfo?.entitlements.active ?? {}).join(', ') || 'none'}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </SafeAreaView>

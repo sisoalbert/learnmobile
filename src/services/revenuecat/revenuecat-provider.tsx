@@ -15,7 +15,7 @@ import {
 
 import { useSessionStore } from '@/state/sessionStore';
 
-export const LEARN_EXPO_PRO_ENTITLEMENT_ID = 'learn_expo_pro';
+export const LEARN_EXPO_PRO_ENTITLEMENT_ID = 'Learn Expo Pro';
 
 export type RevenueCatStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -252,7 +252,7 @@ export function RevenueCatProvider({
   const value = useMemo<RevenueCatContextValue>(() => ({
     customerInfo,
     errorMessage,
-    hasPro: customerInfo ? hasActiveProEntitlement(customerInfo) : serverHasPro,
+    hasPro: (customerInfo ? hasActiveProEntitlement(customerInfo) : false) || serverHasPro,
     presentCustomerCenter,
     presentPaywall,
     refreshCustomerInfo,
