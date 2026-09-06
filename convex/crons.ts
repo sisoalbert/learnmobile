@@ -14,12 +14,12 @@ const queueDueStreakPushReminders = makeFunctionReference<
 
 crons.interval(
   'queue streak-at-risk reminders',
-  { minutes: 60 },
+  { minutes: 15 },
   queueDueStreakReminders,
 );
 crons.interval(
   'queue streak-at-risk push reminders',
-  { minutes: 60 },
+  { minutes: 15 },
   queueDueStreakPushReminders,
 );
 

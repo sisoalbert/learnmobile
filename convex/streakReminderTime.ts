@@ -3,8 +3,11 @@ const REMINDER_HOUR = 19;
 const PUSH_REMINDER_HOUR = 20;
 const PUSH_REMINDER_MINUTE = 0;
 
-export const MAX_STREAK_FREEZE_DAYS = 3;
-export type StreakFreezeDay = 1 | 2 | 3;
+// A three-day freeze permits three missed local dates, so a qualifying lesson
+// may be up to four calendar dates after the previous one.
+export const STREAK_FREEZE_WINDOW_DAYS = 3;
+export const MAX_STREAK_FREEZE_DAYS = STREAK_FREEZE_WINDOW_DAYS + 1;
+export type StreakFreezeDay = 1 | 2 | 3 | 4;
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
@@ -158,7 +161,7 @@ export function streakFreezeState(
   if (age <= MAX_STREAK_FREEZE_DAYS) {
     return {
       currentDays,
-      frozenDaysUsed: age,
+      frozenDaysUsed: Math.min(age, STREAK_FREEZE_WINDOW_DAYS),
       freezeStartedDate,
       freezeDay: age as StreakFreezeDay,
       expired: false,
@@ -167,7 +170,7 @@ export function streakFreezeState(
 
   return {
     currentDays: 0,
-    frozenDaysUsed: MAX_STREAK_FREEZE_DAYS,
+    frozenDaysUsed: STREAK_FREEZE_WINDOW_DAYS,
     freezeStartedDate,
     freezeDay: undefined,
     expired: true,

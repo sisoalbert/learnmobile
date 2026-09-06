@@ -13,13 +13,19 @@ export const STREAK_REMINDER_TEMPLATES = [
   },
   {
     id: 'streak_freeze_day_3',
+    subject: 'Your streak is frozen — 1 day left ❄️',
+    body: 'Your three missed days are almost used. Complete a lesson tomorrow at the latest to protect your streak.',
+    cta: 'START A LESSON',
+  },
+  {
+    id: 'streak_freeze_day_4',
     subject: 'Final freeze day for your streak ⏳',
     body: 'You’ve used your 3-day freeze window. Complete a lesson today to protect your streak.',
     cta: 'START A LESSON',
   },
 ] as const;
 
-export function streakReminderTemplate(freezeDay: 1 | 2 | 3) {
+export function streakReminderTemplate(freezeDay: 1 | 2 | 3 | 4) {
   return STREAK_REMINDER_TEMPLATES[freezeDay - 1];
 }
 

@@ -19,7 +19,7 @@ import {
   streakReminderTemplate,
 } from '../../../../convex/streakReminderContent';
 
-describe('three-day streak freeze rules', () => {
+describe('three-day missed-date streak freeze rules', () => {
   const practicedMonday = Date.parse('2026-08-17T10:00:00Z');
   const timezone = 'Africa/Johannesburg';
 
@@ -28,6 +28,7 @@ describe('three-day streak freeze rules', () => {
       ['2026-08-18T10:00:00Z', '2026-08-18T17:00:00Z', '2026-08-18T18:00:00Z'],
       ['2026-08-19T10:00:00Z', '2026-08-19T17:00:00Z', '2026-08-19T18:00:00Z'],
       ['2026-08-20T10:00:00Z', '2026-08-20T17:00:00Z', '2026-08-20T18:00:00Z'],
+      ['2026-08-21T10:00:00Z', '2026-08-21T17:00:00Z', '2026-08-21T18:00:00Z'],
     ]) {
       const now = Date.parse(date);
       expect(nextStreakReminderAt(practicedMonday, timezone, now)).toBe(Date.parse(emailUtc));
@@ -44,7 +45,7 @@ describe('three-day streak freeze rules', () => {
       .toBe(Date.parse('2026-08-19T17:00:00Z'));
   });
 
-  test('preserves days 1-3 and expires on the fourth missed local date', () => {
+  test('permits three missed local dates and expires on the fifth local date', () => {
     expect(streakFreezeState(5, '2026-08-17', '2026-08-18')).toMatchObject({
       currentDays: 5, frozenDaysUsed: 1, freezeStartedDate: '2026-08-18', freezeDay: 1, expired: false,
     });
@@ -55,9 +56,12 @@ describe('three-day streak freeze rules', () => {
       currentDays: 5, frozenDaysUsed: 3, freezeDay: 3,
     });
     expect(streakFreezeState(5, '2026-08-17', '2026-08-21')).toMatchObject({
+      currentDays: 5, frozenDaysUsed: 3, freezeDay: 4, expired: false,
+    });
+    expect(streakFreezeState(5, '2026-08-17', '2026-08-22')).toMatchObject({
       currentDays: 0, frozenDaysUsed: 3, expired: true,
     });
-    expect(nextStreakReminderAt(practicedMonday, timezone, Date.parse('2026-08-21T10:00:00Z')))
+    expect(nextStreakReminderAt(practicedMonday, timezone, Date.parse('2026-08-22T10:00:00Z')))
       .toBeUndefined();
   });
 
@@ -65,13 +69,14 @@ describe('three-day streak freeze rules', () => {
     ['first', '2026-08-18'],
     ['second', '2026-08-19'],
     ['third', '2026-08-20'],
+    ['fourth', '2026-08-21'],
   ])('continues the streak when returning on the %s freeze day', (_label, date) => {
     expect(streakDaysAfterPractice(5, '2026-08-17', date)).toBe(6);
   });
 
   test('resets after expiry and clears freeze state after practice', () => {
-    expect(streakDaysAfterPractice(5, '2026-08-17', '2026-08-21')).toBe(1);
-    expect(streakFreezeState(1, '2026-08-21', '2026-08-21')).toMatchObject({
+    expect(streakDaysAfterPractice(5, '2026-08-17', '2026-08-22')).toBe(1);
+    expect(streakFreezeState(1, '2026-08-22', '2026-08-22')).toMatchObject({
       currentDays: 1, frozenDaysUsed: 0, freezeStartedDate: undefined,
     });
   });
@@ -90,7 +95,8 @@ describe('three-day streak freeze rules', () => {
     const dates = ['2026-08-10', '2026-08-11', '2026-08-13', '2026-08-14', '2026-08-15'];
     expect(longestStreakLength(dates)).toBe(5);
     expect(currentStreakLength(dates, '2026-08-18')).toBe(5);
-    expect(currentStreakLength(dates, '2026-08-19')).toBe(0);
+    expect(currentStreakLength(dates, '2026-08-19')).toBe(5);
+    expect(currentStreakLength(dates, '2026-08-20')).toBe(0);
     expect(effectiveStreakDays(5, Date.parse('2026-08-15T10:00:00Z'), timezone, Date.parse('2026-08-18T10:00:00Z'))).toBe(5);
   });
 
@@ -106,6 +112,7 @@ describe('three-day streak freeze rules', () => {
       ['2026-08-18T17:00:00Z', 1],
       ['2026-08-19T17:00:00Z', 2],
       ['2026-08-20T17:00:00Z', 3],
+      ['2026-08-21T17:00:00Z', 4],
     ] as const) {
       expect(streakReminderEligibility(candidate, Date.parse(now))).toMatchObject({ streakDays: 7, freezeDay });
     }
@@ -115,7 +122,7 @@ describe('three-day streak freeze rules', () => {
       lastQualifiedDate: '2026-08-18',
       lastPracticeAt: Date.parse('2026-08-18T10:00:00Z'),
     }, Date.parse('2026-08-18T17:00:00Z'))).toBeNull();
-    expect(streakReminderEligibility(candidate, Date.parse('2026-08-21T17:00:00Z'))).toBeNull();
+    expect(streakReminderEligibility(candidate, Date.parse('2026-08-22T17:00:00Z'))).toBeNull();
   });
 
   test('requires a target and allows at most one send per channel and local date', () => {
@@ -133,7 +140,8 @@ describe('three-day streak freeze rules', () => {
   test('uses matching daily content and stable date idempotency', () => {
     expect(streakReminderTemplate(1)).toMatchObject({ subject: 'Your streak is protected tonight 🔥', cta: 'SAVE MY STREAK' });
     expect(streakReminderTemplate(2).subject).toBe('Your streak is frozen — 2 days left ❄️');
-    expect(streakReminderTemplate(3)).toMatchObject({ subject: 'Final freeze day for your streak ⏳', cta: 'START A LESSON' });
+    expect(streakReminderTemplate(3).subject).toBe('Your streak is frozen — 1 day left ❄️');
+    expect(streakReminderTemplate(4)).toMatchObject({ subject: 'Final freeze day for your streak ⏳', cta: 'START A LESSON' });
     expect(streakReminderIdempotencyKey('user-123', '2026-08-18')).toBe('streak-reminder/user-123/2026-08-18');
   });
 });
